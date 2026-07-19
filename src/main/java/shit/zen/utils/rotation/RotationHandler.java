@@ -53,9 +53,12 @@ extends ClientBase {
         ClientBase.yaw = rotation.getYaw();
     }
 
-    private static boolean shouldApplyMovementFix() {
-        return movementFixEnabled
-                && (!TargetStrafe.isActive() || TargetStrafe.isMovementFixEnabled());
+    private static boolean shouldApplySilentMoveFix() {
+        return movementFixEnabled && !TargetStrafe.isActive();
+    }
+
+    private static boolean shouldUseServerRotationForMovement() {
+        return movementFixEnabled || TargetStrafe.isActive();
     }
 
     @EventTarget
@@ -184,7 +187,7 @@ extends ClientBase {
 
     @EventTarget
     public void onStrafe(StrafeEvent strafeEvent) {
-        if (isRotating && targetRotation != null && shouldApplyMovementFix()) {
+        if (isRotating && targetRotation != null && shouldApplySilentMoveFix()) {
             float yaw = targetRotation.getYaw();
             MovementUtil.handleStrafe(strafeEvent, yaw);
         }
@@ -208,21 +211,21 @@ extends ClientBase {
 
     @EventTarget
     public void onRotation(RotationEvent rotationEvent) {
-        if (isRotating && targetRotation != null && shouldApplyMovementFix()) {
+        if (isRotating && targetRotation != null && shouldUseServerRotationForMovement()) {
             rotationEvent.setYaw(targetRotation.getYaw());
         }
     }
 
     @EventTarget
     public void onJump(JumpMarkerEvent jumpMarkerEvent) {
-        if (isRotating && targetRotation != null && shouldApplyMovementFix()) {
+        if (isRotating && targetRotation != null && shouldUseServerRotationForMovement()) {
             jumpMarkerEvent.setYaw(targetRotation.getYaw());
         }
     }
 
     @EventTarget
     public void onFallFlying(FallFlyingEvent fallFlyingEvent) {
-        if (isRotating && targetRotation != null && shouldApplyMovementFix()) {
+        if (isRotating && targetRotation != null && shouldUseServerRotationForMovement()) {
             fallFlyingEvent.setPitch(targetRotation.getPitch());
         }
     }

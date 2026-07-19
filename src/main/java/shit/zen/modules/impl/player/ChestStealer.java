@@ -47,7 +47,6 @@ import shit.zen.modules.impl.movement.Scaffold;
 import shit.zen.settings.impl.BooleanSetting;
 import shit.zen.settings.impl.NumberSetting;
 import shit.zen.utils.animation.Timer;
-import shit.zen.utils.game.BlockUtil;
 import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.misc.ReflectionUtil;
 import shit.zen.event.EventTarget;
@@ -561,7 +560,10 @@ extends Module {
         this.totalBlockCount = 0;
         for (int slot = 0; slot < mc.player.getInventory().getContainerSize(); ++slot) {
             ItemStack itemStack = mc.player.getInventory().getItem(slot);
-            if (itemStack.isEmpty() || !(itemStack.getItem() instanceof BlockItem)) continue;
+            if (itemStack.isEmpty()
+                    || itemStack.getItem() == Items.COBWEB
+                    || !isSolidBlockItem(itemStack)
+                    || !ItemUtil.isUsableItem(itemStack)) continue;
             this.totalBlockCount += itemStack.getCount();
         }
     }
@@ -788,8 +790,10 @@ extends Module {
         if (itemStack.getItem() == Items.LAVA_BUCKET && ItemUtil.countItem(Items.LAVA_BUCKET) >= InventoryManager.getMaxLavaBuckets()) {
             return false;
         }
-        if (itemStack.getItem() instanceof BlockItem && BlockUtil.isPlaceable(itemStack) && ItemUtil.countBlocks() + itemStack.getCount() >= InventoryManager.getMaxBlockSize()) {
-            return false;
+        if (itemStack.getItem() instanceof BlockItem) {
+            return isSolidBlockItem(itemStack)
+                    && ItemUtil.isUsableItem(itemStack)
+                    && ItemUtil.countBlocks() + itemStack.getCount() <= InventoryManager.getMaxBlockSize();
         }
         if (itemStack.getItem() == Items.ARROW && ItemUtil.countItem(Items.ARROW) + itemStack.getCount() >= InventoryManager.getMaxArrows()) {
             return false;
@@ -798,9 +802,6 @@ extends Module {
             return false;
         }
         if ((itemStack.getItem() == Items.SNOWBALL || itemStack.getItem() == Items.EGG) && ItemUtil.countItem(Items.SNOWBALL) + ItemUtil.countItem(Items.EGG) + itemStack.getCount() >= InventoryManager.getMaxEggsSnowballsSize()) {
-            return false;
-        }
-        if (isSolidBlockItem(itemStack)) {
             return false;
         }
         return ItemUtil.isUsableItem(itemStack);

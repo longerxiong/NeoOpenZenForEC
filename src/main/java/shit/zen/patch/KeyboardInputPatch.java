@@ -9,6 +9,7 @@ import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.Vec2;
 import shit.zen.ZenClient;
 import shit.zen.event.impl.StrafeEvent;
+import shit.zen.modules.impl.movement.GuiMove;
 import shit.zen.utils.misc.ReflectionUtil;
 
 @Patch(KeyboardInput.class)
@@ -16,7 +17,7 @@ public class KeyboardInputPatch extends ClientInput {
 
     @Inject(method = "tick", desc = "()V", at = @At(At.Type.TAIL))
     public static void onTick(KeyboardInput input, CallbackInfo callbackInfo) {
-        Input keys = input.keyPresses;
+        Input keys = GuiMove.resolveGuiInput(input.keyPresses);
         float forward = keys.forward() == keys.backward() ? 0.0f : (keys.forward() ? 1.0f : -1.0f);
         float strafe = keys.left() == keys.right() ? 0.0f : (keys.left() ? 1.0f : -1.0f);
         StrafeEvent event = new StrafeEvent(forward, strafe, keys.jump());

@@ -168,7 +168,7 @@ public class InventoryManager extends Module {
         if (!externalContainerOpen
                 && (packet instanceof ServerboundContainerClickPacket
                         || packet instanceof ServerboundContainerClosePacket)) {
-            ChatUtil.print("Cancelled Inventory Packet: " + packet.getClass().getName());
+//            ChatUtil.print("Cancelled Inventory Packet: " + packet.getClass().getName());
             event.setCancelled(true);
             Packet<ServerGamePacketListener> typed = (Packet<ServerGamePacketListener>) packet;
             this.pendingPackets.add(typed);
@@ -201,7 +201,7 @@ public class InventoryManager extends Module {
         }
         while (!this.pendingPackets.isEmpty()) {
             Packet<ServerGamePacketListener> packet = this.pendingPackets.poll();
-            ChatUtil.print("Releasing Packet: " + packet.getClass().getName());
+//            ChatUtil.print("Releasing Packet: " + packet.getClass().getName());
             PacketUtil.sendQueued(packet);
         }
         PacketUtil.sendQueued(new ServerboundContainerClosePacket(mc.player.inventoryMenu.containerId));
@@ -674,7 +674,9 @@ public class InventoryManager extends Module {
             if (ItemUtil.getEquippedArmorScore(equipSlot) >= score) return false;
             return score >= ItemUtil.getBestArmorScore(equipSlot);
         }
-        if (stack.is(ItemTags.SWORDS))   return ItemUtil.getBestSword() == stack;
+        if (stack.is(ItemTags.SWORDS)) {
+            return ItemUtil.getSwordDamage(stack) >= ItemUtil.getBestSwordDamage();
+        }
         if (stack.is(ItemTags.PICKAXES)) return ItemUtil.getBestPickaxe() == stack;
         if (stack.getItem() instanceof AxeItem && !ItemUtil.isLegitAxe(stack)) {
             return ItemUtil.getBestAxe() == stack;

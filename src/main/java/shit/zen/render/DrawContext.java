@@ -208,7 +208,9 @@ public class DrawContext {
             float[] b = outline.get((i + 1) % outline.size());
             Vertex va = texturedVertex(a[0], a[1], lerpUv(a[0], rectangle.x1, rectangle.x2, u1, u2), lerpUv(a[1], rectangle.y1, rectangle.y2, v1, v2), color);
             Vertex vb = texturedVertex(b[0], b[1], lerpUv(b[0], rectangle.x1, rectangle.x2, u1, u2), lerpUv(b[1], rectangle.y1, rectangle.y2, v1, v2), color);
-            addDegenerateTriangle(vertices, center, va, vb);
+            // GUI quads use the opposite winding from the outline generated below.
+            // Reverse each fan edge so the triangles are not removed by back-face culling.
+            addDegenerateTriangle(vertices, center, vb, va);
         }
         this.submit(RenderPipelines.GUI_TEXTURED, TextureSetup.singleTexture(abstractTexture.getTextureView()), vertices);
     }
@@ -464,8 +466,8 @@ public class DrawContext {
             float[] a = outline.get(i);
             float[] b = outline.get((i + 1) % outline.size());
             addDegenerateTriangle(vertices, center,
-                    vertex(a[0], a[1], this.gradientColor(paint, a[0], a[1], rectangle)),
-                    vertex(b[0], b[1], this.gradientColor(paint, b[0], b[1], rectangle)));
+                    vertex(b[0], b[1], this.gradientColor(paint, b[0], b[1], rectangle)),
+                    vertex(a[0], a[1], this.gradientColor(paint, a[0], a[1], rectangle)));
         }
         this.submit(RenderPipelines.GUI, TextureSetup.noTexture(), vertices);
     }

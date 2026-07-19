@@ -10,9 +10,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import shit.zen.ClientBase;
 import shit.zen.event.impl.StrafeEvent;
-import shit.zen.modules.impl.movement.TargetStrafe;
-import shit.zen.utils.game.RotationUtil;
-import shit.zen.utils.rotation.Rotation;
 
 public final class MovementUtil
 extends ClientBase {
@@ -117,15 +114,6 @@ extends ClientBase {
         float forward = strafeEvent.getForward();
         float strafe = strafeEvent.getStrafe();
         float yaw = mc.player.getYRot();
-        if (TargetStrafe.isActive()) {
-            float yawOffset = (float)(MovementUtil.getBaseSpeed() / ((double)TargetStrafe.getRange() * Math.PI * 2.0) * 360.0) * (float)TargetStrafe.strafeDirectionSign;
-            Rotation rotation = RotationUtil.rotationToForBow(new Vec3(TargetStrafe.strafeTarget.getX(), TargetStrafe.strafeTarget.getY(), TargetStrafe.strafeTarget.getZ()), new Vec3(mc.player.getX(), mc.player.getY(), mc.player.getZ()));
-            rotation.setYaw(rotation.getYaw() + yawOffset);
-            float yawRad = rotation.getYaw() * ((float)Math.PI / 180);
-            double circleX = TargetStrafe.strafeTarget.getX() - Math.sin(yawRad) * (double)TargetStrafe.getRange();
-            double circleZ = TargetStrafe.strafeTarget.getZ() + Math.cos(yawRad) * (double)TargetStrafe.getRange();
-            yaw = (float)Math.toDegrees(RotationUtil.rotationToForBow(new Vec3(mc.player.getX(), mc.player.getY(), mc.player.getZ()), new Vec3(circleX, TargetStrafe.strafeTarget.getY(), circleZ)).getYaw() * ((float)Math.PI / 180));
-        }
         double targetDirection = Mth.wrapDegrees(Math.toDegrees(MovementUtil.getDirectionYaw(yaw, forward, strafe)));
         if (forward == 0.0f && strafe == 0.0f) {
             return;

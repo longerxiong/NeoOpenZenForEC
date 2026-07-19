@@ -11,6 +11,7 @@ import shit.zen.ClientBase;
 import shit.zen.ZenClient;
 import shit.zen.asm.Invocation;
 import shit.zen.event.impl.EntityRemoveEvent;
+import shit.zen.event.impl.KeepSprintEvent;
 
 @Patch(Player.class)
 public class PlayerPatch {
@@ -33,6 +34,8 @@ public class PlayerPatch {
     public static void onAttackPre(Player player, Entity target, CallbackInfo callbackInfo) {
         if (ZenClient.isReady()) {
             ZenClient.getInstance().getEventBus().call(new EntityRemoveEvent(false, target));
+            // Fire KeepSprintEvent before attack so modules can save sprint state
+            ZenClient.getInstance().getEventBus().call(new KeepSprintEvent.Pre());
         }
     }
 
@@ -40,6 +43,10 @@ public class PlayerPatch {
     public static void onAttackPost(Player player, Entity target, CallbackInfo callbackInfo) {
         if (ZenClient.isReady()) {
             ZenClient.getInstance().getEventBus().call(new EntityRemoveEvent(true, target));
+            // Fire KeepSprintEvent after attack so modules can restore sprint state
+            ZenClient.getInstance().getEventBus().call(new KeepSprintEvent.Post());
         }
     }
+
+
 }

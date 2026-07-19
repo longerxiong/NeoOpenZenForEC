@@ -98,10 +98,10 @@ extends UIElement {
         for (ModuleElement moduleElement : this.moduleElements) {
             totalContentHeight += moduleElement.getHeight();
         }
-        if (this.moduleElements.size() < 10) {
-            this.panelHeight = Math.min(totalContentHeight, 240.0f) + 20.0f;
-        }
-        this.scrollAmount = Mth.clamp(this.scrollAmount, 0.0f, totalContentHeight - this.panelHeight + 20.0f);
+        float maxPanelHeight = Math.max(80.0f, (float)clickGui.height - 72.0f);
+        this.panelHeight = Math.min(totalContentHeight + 20.0f, maxPanelHeight);
+        float maxScroll = Math.max(0.0f, totalContentHeight - this.panelHeight + 20.0f);
+        this.scrollAmount = Mth.clamp(this.scrollAmount, 0.0f, maxScroll);
         this.scrollTimer.animate(this.scrollAmount, 0.22, Easings.EASE_OUT_POW2);
         this.scrollTimer.tick();
         this.tooltipTimer.animate(this.showTooltip ? 1.0 : 0.0, 0.3, Easings.EASE_OUT_POW2);
@@ -118,8 +118,6 @@ extends UIElement {
         }
         float scaleAmount = this.scaleTimer.getValueF();
         RenderHelper.pushScaleAround(poseStack, this.posX + 60.0f, this.posY + this.panelHeight / 2.0f, 0.4f + 0.6f * scaleAmount);
-        float shadowSize = 12.0f;
-        RenderUtil.drawRoundedRect(poseStack, this.posX - shadowSize, this.posY - shadowSize, 120.0f + shadowSize * 2.0f, this.panelHeight + shadowSize * 2.0f, 6.0f + shadowSize / 2.0f, shadowSize, ColorUtil.fromARGB(0, 0, 0, (int)(80.0f * alpha * 1.0f)));
         RenderUtil.drawRoundedRect(poseStack, this.posX, this.posY, 120.0f, this.panelHeight, 6.0f, ColorUtil.withAlpha(BG_COLOR, alpha));
         RenderUtil.drawGradientH(poseStack, this.posX, this.posY, 120.0f, 1.0f, ColorUtil.withAlpha(ColorUtil.animateColorOffset(-13768502, ACCENT_COLOR_DARK, 100L), alpha), ColorUtil.withAlpha(ColorUtil.animateColorOffset(-13768502, ACCENT_COLOR_DARK, 2000L), alpha));
         FontStore.AXIFORMA_EXTRABOLD_18.drawString(poseStack, this.category.displayName, this.posX + 8.0f, this.posY + (20.0f - FontStore.AXIFORMA_EXTRABOLD_18.getFontHeight()) / 2.0f + 3.0f, ColorUtil.withAlpha(-1, alpha));

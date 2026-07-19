@@ -3,57 +3,41 @@ package shit.zen.modules.impl.movement;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.ChatScreen;
-import net.minecraft.world.inventory.InventoryMenu;
-import shit.zen.event.impl.StrafeEvent;
-import shit.zen.gui.NewClickGui;
-import shit.zen.gui.OldClickGui;
+import net.minecraft.world.entity.player.Input;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.modules.impl.player.InventoryManager;
-import shit.zen.event.EventTarget;
 
 public class GuiMove
 extends Module {
     public static GuiMove INSTANCE;
+
     public GuiMove() {
         super("GuiMove", Category.MOVEMENT);
         INSTANCE = this;
     }
 
-    @EventTarget
-    public void onStrafe(StrafeEvent strafeEvent) {
-        if (mc.player == null || mc.screen == null || !this.isMoving()) {
-            return;
+    public static Input resolveGuiInput(Input original) {
+        if (INSTANCE == null
+                || !INSTANCE.isEnabled()
+                || mc.player == null
+                || mc.screen == null
+                || mc.screen instanceof ChatScreen) {
+            return original;
         }
-        strafeEvent.setSprinting(this.isMovementKey(mc.options.keyJump));
-        strafeEvent.setForward(GuiMove.getMovementSpeed(this.isMovementKey(mc.options.keyUp), this.isMovementKey(mc.options.keyDown)));
-        strafeEvent.setStrafe(GuiMove.getMovementSpeed(this.isMovementKey(mc.options.keyLeft), this.isMovementKey(mc.options.keyRight)));
+
+        return new Input(
+                isPhysicallyDown(mc.options.keyUp),
+                isPhysicallyDown(mc.options.keyDown),
+                isPhysicallyDown(mc.options.keyLeft),
+                isPhysicallyDown(mc.options.keyRight),
+                isPhysicallyDown(mc.options.keyJump),
+                isPhysicallyDown(mc.options.keyShift),
+                isPhysicallyDown(mc.options.keySprint));
     }
 
-    private boolean isMoving() {
-        if (mc.screen instanceof ChatScreen) {
-            return false;
-        }
-        if (mc.screen instanceof OldClickGui || mc.screen instanceof NewClickGui) {
-            return true;
-        }
-        if (mc.player == null) {
-            return false;
-        }
-        if (mc.player.containerMenu instanceof InventoryMenu) {
-            return InventoryManager.isPerformingAction;
-        }
-        return false;
-    }
-
-    private boolean isMovementKey(KeyMapping keyMapping) {
-        return InputConstants.isKeyDown(mc.getWindow().getWindow(), keyMapping.getDefaultKey().getValue());
-    }
-
-    private static float getMovementSpeed(boolean forward, boolean back) {
-        if (forward == back) {
-            return 0.0f;
-        }
-        return forward ? 1.0f : -1.0f;
+    private static boolean isPhysicallyDown(KeyMapping keyMapping) {
+        InputConstants.Key key = keyMapping.getKey();
+        return key.getType() == InputConstants.Type.KEYSYM
+                && InputConstants.isKeyDown(mc.getWindow().getWindow(), key.getValue());
     }
 }

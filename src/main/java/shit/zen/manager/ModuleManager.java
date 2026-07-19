@@ -103,6 +103,7 @@ public class ModuleManager extends ClientBase {
         this.register(new Sprint());
         this.register(new TargetStrafe());
         this.register(new Speed());
+        this.register(new KeepSprint());
 
         this.register(new AntiTNT());
         this.register(new AntiVoid());

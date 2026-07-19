@@ -83,12 +83,13 @@ extends Screen {
         return false;
     }
 
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         for (CategoryPanel categoryPanel : categoryPanels) {
-            if (!categoryPanel.mouseScrolled(mouseX, mouseY, scrollDelta)) continue;
+            if (!categoryPanel.mouseScrolled(mouseX, mouseY, scrollY)) continue;
             return true;
         }
-        return false;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     static {

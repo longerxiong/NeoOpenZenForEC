@@ -1,18 +1,17 @@
 package shit.zen.utils.game;
 
-import com.google.common.collect.Multimap;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import lombok.Generated;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.ArrowItem;
 import net.minecraft.world.item.AxeItem;
@@ -27,8 +26,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.PlayerHeadItem;
 import net.minecraft.world.item.ShovelItem;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SkullBlock;
 import shit.zen.ClientBase;
@@ -109,6 +108,43 @@ extends ClientBase {
         return stack.getEnchantmentLevel(mc.level.registryAccess().holderOrThrow(enchantment));
     }
 
+    private static double getAttributeValue(ItemStack stack, Holder<Attribute> attribute,
+                                            EquipmentSlot slot, double baseValue) {
+        ItemAttributeModifiers modifiers = stack.getOrDefault(
+                DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY);
+        double value = baseValue;
+
+        for (ItemAttributeModifiers.Entry entry : modifiers.modifiers()) {
+            if (entry.attribute().equals(attribute)
+                    && entry.slot().test(slot)
+                    && entry.modifier().operation() == AttributeModifier.Operation.ADD_VALUE) {
+                value += entry.modifier().amount();
+            }
+        }
+        for (ItemAttributeModifiers.Entry entry : modifiers.modifiers()) {
+            if (entry.attribute().equals(attribute)
+                    && entry.slot().test(slot)
+                    && entry.modifier().operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                value += baseValue * entry.modifier().amount();
+            }
+        }
+        for (ItemAttributeModifiers.Entry entry : modifiers.modifiers()) {
+            if (entry.attribute().equals(attribute)
+                    && entry.slot().test(slot)
+                    && entry.modifier().operation() == AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL) {
+                value *= 1.0 + entry.modifier().amount();
+            }
+        }
+        return value;
+    }
+
+    private static float getDurabilityRatio(ItemStack stack) {
+        if (!stack.isDamageableItem() || stack.getMaxDamage() <= 0) {
+            return 1.0f;
+        }
+        return (float)(stack.getMaxDamage() - stack.getDamageValue()) / (float)stack.getMaxDamage();
+    }
+
     public static int getPunchLevel(ItemStack itemStack) {
         if (mc.level == null) return 0;
         return itemStack.getEnchantmentLevel(mc.level.registryAccess().holderOrThrow(Enchantments.PUNCH));
@@ -161,7 +197,10 @@ extends ClientBase {
     }
 
     public static ItemStack getBestSword() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.is(ItemTags.SWORDS)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getSwordDamage(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream()
+                .filter(itemStack -> !itemStack.isEmpty() && itemStack.is(ItemTags.SWORDS))
+                .max(Comparator.comparingDouble(ItemUtil::getSwordDamage))
+                .orElse(null);
     }
 
     public static float getBowScore(ItemStack itemStack) {
@@ -176,7 +215,8 @@ extends ClientBase {
             score += getEnchantLevel(itemStack, Enchantments.PUNCH);
             score += getEnchantLevel(itemStack, Enchantments.INFINITY);
             score += getEnchantLevel(itemStack, Enchantments.FLAME);
-            return (score += (float)getEnchantLevel(itemStack, Enchantments.POWER) / 10.0f) + (float)itemStack.getDamageValue() / (float)itemStack.getMaxDamage();
+            score += (float)getEnchantLevel(itemStack, Enchantments.POWER) / 10.0f;
+            return score + getDurabilityRatio(itemStack) * 0.01f;
         }
         return 0.0f;
     }
@@ -193,7 +233,8 @@ extends ClientBase {
             score += (float)getEnchantLevel(itemStack, Enchantments.PUNCH) / 10.0f;
             score += getEnchantLevel(itemStack, Enchantments.INFINITY);
             score += getEnchantLevel(itemStack, Enchantments.FLAME);
-            return (score += (float)getEnchantLevel(itemStack, Enchantments.POWER)) + (float)itemStack.getDamageValue() / (float)itemStack.getMaxDamage();
+            score += getEnchantLevel(itemStack, Enchantments.POWER);
+            return score + getDurabilityRatio(itemStack) * 0.01f;
         }
         return 0.0f;
     }
@@ -223,76 +264,60 @@ extends ClientBase {
         }
         int efficiencyLevel = getEnchantLevel(itemStack, Enchantments.EFFICIENCY);
         if (efficiencyLevel > 0) {
-            speed += (float)efficiencyLevel * 0.0075f;
+            speed += efficiencyLevel * efficiencyLevel + 1.0f;
         }
+        speed += getDurabilityRatio(itemStack) * 0.001f;
         return speed;
     }
 
     public static float getAxeDamage(ItemStack itemStack) {
-        int sharpnessLevel;
-        float damage = 0.0f;
-        if (itemStack == null) {
+        if (itemStack == null || itemStack.isEmpty() || !itemStack.is(ItemTags.AXES)) {
             return 0.0f;
         }
-        if (itemStack.isEmpty()) {
-            return 0.0f;
-        }
-        Item item = itemStack.getItem();
-        if (item instanceof AxeItem axeItem) {
-            if (ItemUtil.isLegitAxe(itemStack)) {
-                if (axeItem == Items.WOODEN_AXE) {
-                    damage += 4.0f;
-                } else if (axeItem == Items.STONE_AXE) {
-                    damage += 5.0f;
-                } else if (axeItem == Items.IRON_AXE) {
-                    damage += 6.0f;
-                } else if (axeItem == Items.GOLDEN_AXE) {
-                    damage += 4.0f;
-                } else if (axeItem == Items.DIAMOND_AXE) {
-                    damage += 7.0f;
-                }
-            }
-        }
-        if ((sharpnessLevel = getEnchantLevel(itemStack, Enchantments.SHARPNESS)) > 0) {
+        float damage = (float)getAttributeValue(
+                itemStack, Attributes.ATTACK_DAMAGE, EquipmentSlot.MAINHAND, 1.0);
+        int sharpnessLevel = getEnchantLevel(itemStack, Enchantments.SHARPNESS);
+        if (sharpnessLevel > 0) {
             damage += sharpnessLevel * 0.5f + 0.5f;
         }
-        return damage;
+        return damage + getDurabilityRatio(itemStack) * 0.001f;
     }
 
     public static float getSwordDamage(ItemStack itemStack) {
-        int sharpnessLevel;
-        float damage = 0.0f;
-        if (itemStack == null) {
+        if (itemStack == null || itemStack.isEmpty() || !itemStack.is(ItemTags.SWORDS)) {
             return 0.0f;
         }
-        if (itemStack.isEmpty()) {
-            return 0.0f;
-        }
-        if (itemStack.is(ItemTags.SWORDS)) {
-            damage += itemStack.getDamageValue() + 1.0f;
-        }
-        if ((sharpnessLevel = getEnchantLevel(itemStack, Enchantments.SHARPNESS)) > 0) {
+        float damage = (float)getAttributeValue(
+                itemStack, Attributes.ATTACK_DAMAGE, EquipmentSlot.MAINHAND, 1.0);
+        int sharpnessLevel = getEnchantLevel(itemStack, Enchantments.SHARPNESS);
+        if (sharpnessLevel > 0) {
             damage += sharpnessLevel * 0.5f + 0.5f;
         }
-        return damage;
+        return damage + getDurabilityRatio(itemStack) * 0.001f;
     }
 
     public static float getArmorScore(ItemStack itemStack) {
-        int score = 0;
         if (itemStack == null || itemStack.isEmpty()) {
             return 0.0f;
         }
-        Item item = itemStack.getItem();
-        if (itemStack.is(ItemTags.HEAD_ARMOR) || itemStack.is(ItemTags.CHEST_ARMOR) || itemStack.is(ItemTags.LEG_ARMOR) || itemStack.is(ItemTags.FOOT_ARMOR)) {
-            Item armorItem = itemStack.getItem();
-            if (armorItem == Items.LEATHER_HELMET || armorItem == Items.LEATHER_CHESTPLATE || armorItem == Items.LEATHER_LEGGINGS || armorItem == Items.LEATHER_BOOTS) score += 100;
-            else if (armorItem == Items.CHAINMAIL_HELMET || armorItem == Items.CHAINMAIL_CHESTPLATE || armorItem == Items.CHAINMAIL_LEGGINGS || armorItem == Items.CHAINMAIL_BOOTS) score += 200;
-            else if (armorItem == Items.IRON_HELMET || armorItem == Items.IRON_CHESTPLATE || armorItem == Items.IRON_LEGGINGS || armorItem == Items.IRON_BOOTS) score += 400;
-            else if (armorItem == Items.GOLDEN_HELMET || armorItem == Items.GOLDEN_CHESTPLATE || armorItem == Items.GOLDEN_LEGGINGS || armorItem == Items.GOLDEN_BOOTS) score += 300;
-            else if (armorItem == Items.DIAMOND_HELMET || armorItem == Items.DIAMOND_CHESTPLATE || armorItem == Items.DIAMOND_LEGGINGS || armorItem == Items.DIAMOND_BOOTS) score += 500;
-            else if (armorItem == Items.NETHERITE_HELMET || armorItem == Items.NETHERITE_CHESTPLATE || armorItem == Items.NETHERITE_LEGGINGS || armorItem == Items.NETHERITE_BOOTS) score += 600;
-        }
-        return score + getEnchantLevel(itemStack, Enchantments.PROTECTION);
+        EquipmentSlot slot;
+        if (itemStack.is(ItemTags.HEAD_ARMOR)) slot = EquipmentSlot.HEAD;
+        else if (itemStack.is(ItemTags.CHEST_ARMOR)) slot = EquipmentSlot.CHEST;
+        else if (itemStack.is(ItemTags.LEG_ARMOR)) slot = EquipmentSlot.LEGS;
+        else if (itemStack.is(ItemTags.FOOT_ARMOR)) slot = EquipmentSlot.FEET;
+        else return 0.0f;
+
+        double armor = getAttributeValue(itemStack, Attributes.ARMOR, slot, 0.0);
+        double toughness = getAttributeValue(itemStack, Attributes.ARMOR_TOUGHNESS, slot, 0.0);
+        double knockbackResistance = getAttributeValue(itemStack, Attributes.KNOCKBACK_RESISTANCE, slot, 0.0);
+        float score = (float)(armor * 100.0 + toughness * 10.0 + knockbackResistance * 100.0);
+        score += getEnchantLevel(itemStack, Enchantments.PROTECTION) * 20.0f;
+        score += getEnchantLevel(itemStack, Enchantments.PROJECTILE_PROTECTION) * 12.0f;
+        score += getEnchantLevel(itemStack, Enchantments.BLAST_PROTECTION) * 12.0f;
+        score += getEnchantLevel(itemStack, Enchantments.FIRE_PROTECTION) * 12.0f;
+        score += getEnchantLevel(itemStack, Enchantments.FEATHER_FALLING) * 10.0f;
+        score += getEnchantLevel(itemStack, Enchantments.THORNS) * 5.0f;
+        return score + getDurabilityRatio(itemStack) * 0.01f;
     }
 
     public static float getCrossbowScore(ItemStack itemStack) {
@@ -460,7 +485,7 @@ extends ClientBase {
     }
 
     public static ItemStack getBestPickaxe() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.is(ItemTags.PICKAXES) && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getDigSpeed(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.is(ItemTags.PICKAXES) && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getDigSpeed)).orElse(null);
     }
 
     public static float getBestAxeScore() {
@@ -468,11 +493,11 @@ extends ClientBase {
     }
 
     public static ItemStack getBestAxe() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof AxeItem && !ItemUtil.isLegitAxe(itemStack) && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getDigSpeed(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof AxeItem && !ItemUtil.isLegitAxe(itemStack) && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getDigSpeed)).orElse(null);
     }
 
     public static ItemStack getBestSharpAxe() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof AxeItem && ItemUtil.isLegitAxe(itemStack) && ItemUtil.isUsable(itemStack) && !ItemUtil.isOtherCheat(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getAxeDamage(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof AxeItem && ItemUtil.isLegitAxe(itemStack) && ItemUtil.isUsable(itemStack) && !ItemUtil.isOtherCheat(itemStack)).max(Comparator.comparingDouble(ItemUtil::getAxeDamage)).orElse(null);
     }
 
     public static float getBestShovelScore() {
@@ -480,7 +505,7 @@ extends ClientBase {
     }
 
     public static ItemStack getBestShovel() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof ShovelItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getDigSpeed(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof ShovelItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getDigSpeed)).orElse(null);
     }
 
     public static float getBestCrossbowScore() {
@@ -488,7 +513,7 @@ extends ClientBase {
     }
 
     public static ItemStack getBestCrossbow() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof CrossbowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getCrossbowScore(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof CrossbowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getCrossbowScore)).orElse(null);
     }
 
     public static float getBestBowScore() {
@@ -496,7 +521,7 @@ extends ClientBase {
     }
 
     public static ItemStack getBestBow() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof BowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getBowScore(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof BowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getBowScore)).orElse(null);
     }
 
     public static float getBestBowScoreAlt() {
@@ -504,7 +529,7 @@ extends ClientBase {
     }
 
     public static ItemStack getBestBowAlt() {
-        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof BowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingInt(itemStack -> (int)(ItemUtil.getBowScoreAlt(itemStack) * 100.0f))).orElse(null);
+        return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof BowItem && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getBowScoreAlt)).orElse(null);
     }
 
     public static boolean isGoodBow(ItemStack itemStack) {

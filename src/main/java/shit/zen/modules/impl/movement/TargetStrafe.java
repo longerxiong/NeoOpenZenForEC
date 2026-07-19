@@ -19,7 +19,6 @@ extends Module {
     public static TargetStrafe INSTANCE;
     private final Timer collisionTimer = new Timer();
     private final BooleanSetting smartStrafe = new BooleanSetting("Jump Key Only", true);
-    public final BooleanSetting movementFix = new BooleanSetting("Movement Fix", true);
     private final NumberSetting range = new NumberSetting("Range", 0.5f, 0.1f, 2.0f, 0.1f);
     private final NumberSetting switchDelay = new NumberSetting("Switch Delay", 1000, 100, 5000, 100);
     public static int strafeDirectionSign;
@@ -44,10 +43,6 @@ extends Module {
                 && INSTANCE.isEnabled()
                 && strafeTarget != null
                 && (!isSmartStrafe() || mc.options.keyJump.isDown());
-    }
-
-    public static boolean isMovementFixEnabled() {
-        return INSTANCE == null || INSTANCE.movementFix.getValue();
     }
 
     @EventTarget
