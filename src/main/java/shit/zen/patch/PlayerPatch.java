@@ -1,0 +1,45 @@
+package shit.zen.patch;
+
+import asm.patchify.annotation.At;
+import asm.patchify.annotation.Inject;
+import asm.patchify.annotation.Patch;
+import asm.patchify.annotation.WrapInvoke;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import shit.zen.ClientBase;
+import shit.zen.ZenClient;
+import shit.zen.asm.Invocation;
+import shit.zen.event.impl.EntityRemoveEvent;
+
+@Patch(Player.class)
+public class PlayerPatch {
+    @WrapInvoke(
+            method = "die",
+            desc = "(Lnet/minecraft/world/damagesource/DamageSource;)V",
+            target = "net/minecraft/world/entity/Entity/getYRot",
+            targetDesc = "()F"
+    )
+    public static float onDieGetYRot(Player player, DamageSource source, Invocation<Player, Float> original) throws Exception {
+        return ClientBase.yaw;
+    }
+
+    @WrapInvoke(method = "attack", desc = "(Lnet/minecraft/world/entity/Entity;)V", target = "net/minecraft/world/entity/Entity/getYRot", targetDesc = "()F")
+    public static float onAttackGetYRot(Player player, Entity target, Invocation<Player, Float> original) throws Exception {
+        return ClientBase.yaw;
+    }
+
+    @Inject(method = "attack", desc = "(Lnet/minecraft/world/entity/Entity;)V", at = @At(At.Type.HEAD))
+    public static void onAttackPre(Player player, Entity target, CallbackInfo callbackInfo) {
+        if (ZenClient.isReady()) {
+            ZenClient.getInstance().getEventBus().call(new EntityRemoveEvent(false, target));
+        }
+    }
+
+    @Inject(method = "attack", desc = "(Lnet/minecraft/world/entity/Entity;)V", at = @At(At.Type.TAIL))
+    public static void onAttackPost(Player player, Entity target, CallbackInfo callbackInfo) {
+        if (ZenClient.isReady()) {
+            ZenClient.getInstance().getEventBus().call(new EntityRemoveEvent(true, target));
+        }
+    }
+}
