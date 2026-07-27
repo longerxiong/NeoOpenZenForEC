@@ -90,16 +90,14 @@ extends Module {
 
     @EventTarget
     public void onRender(RenderEvent renderEvent) {
+        // World boxes: WorldOverlayRenderer applies camera transform on CPU (Iris-safe).
+        // Do not translate(-camera) here — that would double-subtract.
         PoseStack poseStack = renderEvent.poseStack();
-        poseStack.pushPose();
-        Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.translate(-camera.x, -camera.y, -camera.z);
         for (AABB aABB : this.renderBoundingBoxes) {
             BlockPos blockPos = BlockPos.containing(aABB.minX, aABB.minY, aABB.minZ);
             float[] fArray = this.openedChestPositions.contains(blockPos) ? openedChestColor : chestColor;
             RenderUtil.drawSolidBox(aABB, poseStack, new Color(fArray[0], fArray[1], fArray[2]), 0.25f);
         }
-        poseStack.popPose();
     }
 
     static {

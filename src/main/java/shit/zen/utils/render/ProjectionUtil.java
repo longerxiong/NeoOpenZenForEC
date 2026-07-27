@@ -11,26 +11,21 @@ import shit.zen.utils.math.Vector2f;
 public final class ProjectionUtil
 extends ClientBase {
     public static void updateMatrices() {
-        // Projection is calculated from the current camera and FOV in project().
+        // Projection uses the exact per-frame view/projection matrices captured by
+        // WorldOverlayRenderer (from LevelRenderer.renderLevel); nothing to do here.
     }
 
     public static Vector2f project(double worldX, double worldY, double worldZ, float partialTicks) {
-        Vec3 cameraPos = mc.getEntityRenderDispatcher().camera.getPosition();
-        Quaternionf cameraRotation = new Quaternionf(mc.getEntityRenderDispatcher().cameraOrientation());
-        cameraRotation.conjugate();
-        Vector3f relativePos = new Vector3f((float)(cameraPos.x - worldX), (float)(cameraPos.y - worldY), (float)(cameraPos.z - worldZ));
-        relativePos.rotate(cameraRotation);
-        double fov = mc.options.fov().get();
-        return ProjectionUtil.projectInternal(relativePos, fov);
-    }
-
-    private static Vector2f projectInternal(Vector3f relativePos, double fov) {
-        if (relativePos.z() >= -1.0E-4f) {
+        // Delegate to the matrix-based projection so overlays match what the game
+        // actually renders. The previous hand-rolled projection used the base FOV
+        // option (mc.options.fov()) and a manual camera rotation, which ignores the
+        // real render FOV / view transforms and drifts out of alignment — most
+        // visibly once Iris/Sodium is installed.
+        float[] out = new float[2];
+        if (!WorldOverlayRenderer.projectToScreen(worldX, worldY, worldZ, out)) {
             return null;
         }
-        float halfHeight = (float)mc.getWindow().getGuiScaledHeight() / 2.0f;
-        float scale = halfHeight / (relativePos.z() * (float)Math.tan(Math.toRadians(fov / 2.0)));
-        return new Vector2f(-relativePos.x() * scale + (float)mc.getWindow().getGuiScaledWidth() / 2.0f, (float)mc.getWindow().getGuiScaledHeight() / 2.0f - relativePos.y() * scale);
+        return new Vector2f(out[0], out[1]);
     }
 
     public static Vector2f project(double worldX, double worldY, double worldZ) {

@@ -211,15 +211,13 @@ public class Backtrack extends Module {
         Vec3 pos = tracker.getInterpolatedPos(renderEvent.partialTick());
         double halfWidth = tracker.player.getBbWidth() / 2.0;
         double height = tracker.player.getBbHeight();
-        poseStack.pushPose();
-        Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.translate(pos.x - camera.x, pos.y - camera.y, pos.z - camera.z);
-        AABB box = new AABB(-halfWidth, 0.0, -halfWidth, halfWidth, height, halfWidth);
+        AABB box = new AABB(
+                pos.x - halfWidth, pos.y, pos.z - halfWidth,
+                pos.x + halfWidth, pos.y + height, pos.z + halfWidth);
         Color fill = new Color(255, 255, 255, 64);
         RenderUtil.drawFilledColoredBox(box, poseStack, fill, fill);
         Color outline = new Color(255, 255, 255, 204);
         RenderUtil.drawColoredBox(box, poseStack, outline, outline);
-        poseStack.popPose();
     }
 
     @EventTarget

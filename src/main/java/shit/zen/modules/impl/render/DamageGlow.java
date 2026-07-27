@@ -163,7 +163,7 @@ public class DamageGlow extends Module {
                 model.renderToBuffer(poseStack, consumer, 0xF000F0,
                         LivingEntityRenderer.getOverlayCoords(renderState, 0.0f), tint);
                 poseStack.popPose();
-                bufferSource.endBatch(type);
+                shit.zen.utils.render.WorldOverlayRenderer.withIdentityModelView(() -> bufferSource.endBatch(type));
             } finally {
                 entity.hurtTime = saved;
             }

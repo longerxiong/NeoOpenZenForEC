@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
@@ -94,9 +95,6 @@ extends Module {
     @EventTarget
     public void onRender(RenderEvent renderEvent) {
         PoseStack poseStack = renderEvent.poseStack();
-        Vec3 vec3 = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.pushPose();
-        poseStack.translate(-vec3.x, -vec3.y, -vec3.z);
         if (this.lastPlacedPos != null) {
             RenderUtil.drawOutlineBox(new AABB(this.lastPlacedPos), poseStack, Color.WHITE, 0.8f);
         }
@@ -104,20 +102,7 @@ extends Module {
             AABB aABB = this.targetTnt.getBoundingBox();
             RenderUtil.drawSolidBox(aABB, poseStack, Color.RED, 0.25f);
             RenderUtil.drawOutlineBox(aABB, poseStack, Color.RED, 0.8f);
-            float fuseSeconds = (float)this.targetTnt.getFuse() / 20.0f;
-            if (fuseSeconds > 0.0f) {
-                String fuseLabel = String.format("%.1fs", new Object[]{fuseSeconds});
-                BlockPos tntPos = this.targetTnt.blockPosition();
-                poseStack.pushPose();
-                poseStack.translate((double)tntPos.getX() + 0.5, (double)tntPos.getY() + 1.1, (double)tntPos.getZ() + 0.5);
-                poseStack.mulPose(mc.gameRenderer.getMainCamera().rotation());
-                poseStack.scale(-0.025f, -0.025f, 0.025f);
-                float textWidth = mc.font.width(fuseLabel);
-                mc.font.drawInBatch(fuseLabel, -textWidth / 2.0f, 0.0f, -1, false, poseStack.last().pose(), mc.renderBuffers().bufferSource(), Font.DisplayMode.NORMAL, 0, 0xF000F0);
-                poseStack.popPose();
-            }
         }
-        poseStack.popPose();
     }
 
     private boolean isMoving() {

@@ -48,6 +48,7 @@ import shit.zen.patch.PacketUtilsPatch;
 import shit.zen.patch.PlayerPatch;
 import shit.zen.patch.PlayerTabOverlayPatch;
 import shit.zen.asm.Bootstrap;
+import shit.zen.utils.render.IrisCompatibility;
 import shit.zen.utils.rotation.RotationHandler;
 
 @Mod(ZenClient.MOD_ID)
@@ -191,6 +192,7 @@ public class ZenClient extends ClientBase {
     }
 
     public static void registerPatches() {
+        IrisCompatibility.initialize();
         PatchRegistry.register(MinecraftPatch.class);
         PatchRegistry.register(LocalPlayerPatch.class);
         PatchRegistry.register(LivingEntityPatch.class);
@@ -203,9 +205,10 @@ public class ZenClient extends ClientBase {
         PatchRegistry.register(KeyboardInputPatch.class);
         PatchRegistry.register(ChatScreenPatch.class);
         PatchRegistry.register(EntityRendererPatch.class);
+        // 3D overlays: LevelRenderer.renderLevel TAIL (post-Iris finalize, reliable inject).
         PatchRegistry.register(LevelRendererPatch.class);
-        PatchRegistry.register(BlockPatch.class);
         PatchRegistry.register(GameRendererPatch.class);
+        PatchRegistry.register(BlockPatch.class);
         PatchRegistry.register(ItemInHandRendererPatch.class);
         PatchRegistry.register(ItemInHandLayerPatch.class);
         PatchRegistry.register(LivingEntityRendererPatch.class);

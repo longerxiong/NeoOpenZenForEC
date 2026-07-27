@@ -200,9 +200,6 @@ public class AntiWeb extends Module {
     public void onRender(RenderEvent renderEvent) {
         if (currentPhase == Phase.IDLE || mc.gameRenderer == null) return;
         PoseStack poseStack = renderEvent.poseStack();
-        Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.pushPose();
-        poseStack.translate(-camera.x, -camera.y, -camera.z);
         if (this.webPos != null) {
             AABB box = new AABB(this.webPos);
             Color color = new Color(0, 150, 255);
@@ -215,7 +212,6 @@ public class AntiWeb extends Module {
             RenderUtil.drawSolidBox(box, poseStack, color, 0.25f);
             RenderUtil.drawOutlineBox(box, poseStack, color, 0.75f);
         }
-        poseStack.popPose();
     }
 
     private void reset() {

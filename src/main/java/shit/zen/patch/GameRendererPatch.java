@@ -6,14 +6,17 @@ import asm.patchify.annotation.Overwrite;
 import asm.patchify.annotation.Patch;
 import asm.patchify.annotation.WrapInvoke;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Matrix4f;
 import shit.zen.ZenClient;
+import shit.zen.utils.rotation.RotationHandler;
 import shit.zen.asm.Invocation;
 import shit.zen.event.impl.GlRenderEvent;
 import shit.zen.event.impl.Render2DEvent;
@@ -22,6 +25,7 @@ import shit.zen.modules.impl.render.FullBright;
 import shit.zen.modules.impl.render.NoHurtCam;
 import shit.zen.render.Renderer;
 import shit.zen.utils.misc.ReflectionUtil;
+import shit.zen.utils.render.WorldOverlayRenderer;
 
 @Patch(GameRenderer.class)
 public class GameRendererPatch {
@@ -32,6 +36,10 @@ public class GameRendererPatch {
         }
         return entity.hasEffect(MobEffects.NIGHT_VISION) ? 1.0f : 0.0f;
     }
+
+    // 3D world overlays: injected in LevelRendererPatch TAIL (reliable).
+    // Do not use AFTER_INVOKE of LevelRenderer.renderLevel here — owner/name
+    // remapping often finds zero sites.
 
     @Inject(
             method = "render",
@@ -53,6 +61,10 @@ public class GameRendererPatch {
                 } finally {
                     poseStack.popPose();
                 }
+                // Draw all world-overlay geometry (ESP boxes, etc.) submitted this
+                // frame — from either the 3D world pass or the 2D events above —
+                // through the GUI canvas, which is Iris-safe.
+                WorldOverlayRenderer.flush(drawContext);
             });
         }
     }
@@ -72,6 +84,47 @@ public class GameRendererPatch {
                 AspectRatio.INSTANCE.ratioSetting.getValue().floatValue(),
                 0.05f,
                 gameRenderer.getDepthFar());
+    }
+
+    // ===== Keep the FOV steady while the rotation system is turning the head =====
+    // Silent rotation makes vanilla drop sprint for a few ticks, because the movement
+    // input no longer counts as "forward" relative to the yaw being sent. Losing sprint
+    // removes the movement-speed attribute bonus, and the FOV shrinks with it — so the
+    // view pumps in and out on every aim. While a rotation is running and the player is
+    // still moving, hold the FOV at the value it had just before the rotation started,
+    // which keeps that sprint break invisible. This is purely visual: sprint state,
+    // movement and packets are untouched.
+    private static float fovBeforeRotation = Float.NaN;
+
+    @Inject(
+            method = "getFov",
+            desc = "(Lnet/minecraft/client/Camera;FZ)F",
+            at = @At(At.Type.TAIL)
+    )
+    public static void onGetFov(GameRenderer gameRenderer, Camera camera, float partialTick,
+                                boolean useFovSetting, CallbackInfo callbackInfo) {
+        // useFovSetting == false is the fixed FOV used for the held item — never touch it.
+        if (!useFovSetting || !(callbackInfo.result instanceof Number number)) {
+            return;
+        }
+        float current = number.floatValue();
+        LocalPlayer player = gameRenderer.getMinecraft().player;
+        if (!ZenClient.isReady() || player == null
+                || !RotationHandler.isRotating || !isMovingHorizontally(player)) {
+            // Nothing to hide: follow the real FOV so we resume from the right value.
+            fovBeforeRotation = current;
+            return;
+        }
+        if (Float.isNaN(fovBeforeRotation)) {
+            fovBeforeRotation = current;
+        }
+        callbackInfo.result = fovBeforeRotation;
+    }
+
+    private static boolean isMovingHorizontally(LocalPlayer player) {
+        double dx = player.getX() - player.xOld;
+        double dz = player.getZ() - player.zOld;
+        return dx * dx + dz * dz > 1.0E-4;
     }
 
     @Inject(method = "bobHurt", desc = "(Lcom/mojang/blaze3d/vertex/PoseStack;F)V", at = @At(At.Type.HEAD))

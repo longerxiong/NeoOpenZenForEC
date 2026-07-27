@@ -175,11 +175,7 @@ public final class RenderUtil extends ClientBase {
         float red = color.getRed() / 255.0f;
         float green = color.getGreen() / 255.0f;
         float blue = color.getBlue() / 255.0f;
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer buffer = buffers.getBuffer(RenderType.debugFilledBox());
-        ShapeRenderer.addChainedFilledBoxVertices(poseStack, buffer, box.minX, box.minY, box.minZ,
-                box.maxX, box.maxY, box.maxZ, red, green, blue, alpha);
-        buffers.endBatch(RenderType.debugFilledBox());
+        WorldOverlayRenderer.drawSolidBox(box, poseStack, red, green, blue, alpha);
     }
 
     public static void drawOutlineBox(AABB box, PoseStack poseStack) {
@@ -190,10 +186,7 @@ public final class RenderUtil extends ClientBase {
         float red = color.getRed() / 255.0f;
         float green = color.getGreen() / 255.0f;
         float blue = color.getBlue() / 255.0f;
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer buffer = buffers.getBuffer(RenderType.lines());
-        ShapeRenderer.renderLineBox(poseStack, buffer, box, red, green, blue, alpha);
-        buffers.endBatch(RenderType.lines());
+        WorldOverlayRenderer.drawOutlineBox(box, poseStack, red, green, blue, alpha);
     }
 
     public static boolean isHovered(float x, float y, float width, float height, int mouseX, int mouseY) {
@@ -216,38 +209,47 @@ public final class RenderUtil extends ClientBase {
         double progress = cycle > 1.0 ? 2.0 - cycle : cycle;
         double y = position.y + entity.getBbHeight() * progress;
         double radius = entity.getBbWidth() * 0.4875;
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer buffer = buffers.getBuffer(RenderType.lines());
-        PoseStack.Pose pose = poseStack.last();
-        int segments = 60;
-        for (int i = 0; i < segments; i++) {
-            double angle1 = Math.PI * 2.0 * i / segments;
-            double angle2 = Math.PI * 2.0 * (i + 1) / segments;
-            float x1 = (float)(position.x + Math.cos(angle1) * radius);
-            float z1 = (float)(position.z + Math.sin(angle1) * radius);
-            float x2 = (float)(position.x + Math.cos(angle2) * radius);
-            float z2 = (float)(position.z + Math.sin(angle2) * radius);
-            float normalX = x2 - x1;
-            float normalZ = z2 - z1;
-            float length = Math.max(1.0E-4f, (float)Math.hypot(normalX, normalZ));
-            normalX /= length;
-            normalZ /= length;
-            int color1 = ColorUtil.getRainbowColor(10, i * 5).getRGB();
-            int color2 = ColorUtil.getRainbowColor(10, (i + 1) * 5).getRGB();
-            buffer.addVertex(pose, x1, (float)y, z1).setColor(color1).setNormal(pose, normalX, 0.0f, normalZ);
-            buffer.addVertex(pose, x2, (float)y, z2).setColor(color2).setNormal(pose, normalX, 0.0f, normalZ);
-        }
-        buffers.endBatch(RenderType.lines());
+        org.joml.Vector3f view = new org.joml.Vector3f();
+        WorldOverlayRenderer.withCameraModelView(() -> {
+            MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+            VertexConsumer buffer = buffers.getBuffer(RenderType.lines());
+            int segments = 60;
+            for (int i = 0; i < segments; i++) {
+                double angle1 = Math.PI * 2.0 * i / segments;
+                double angle2 = Math.PI * 2.0 * (i + 1) / segments;
+                double wx1 = position.x + Math.cos(angle1) * radius;
+                double wz1 = position.z + Math.sin(angle1) * radius;
+                double wx2 = position.x + Math.cos(angle2) * radius;
+                double wz2 = position.z + Math.sin(angle2) * radius;
+                WorldOverlayRenderer.toCameraRelative(wx1, y, wz1, view);
+                float x1 = view.x, y1 = view.y, z1 = view.z;
+                WorldOverlayRenderer.toCameraRelative(wx2, y, wz2, view);
+                float x2 = view.x, y2 = view.y, z2 = view.z;
+                float normalX = x2 - x1;
+                float normalZ = z2 - z1;
+                float length = Math.max(1.0E-4f, (float)Math.hypot(normalX, normalZ));
+                normalX /= length;
+                normalZ /= length;
+                int color1 = ColorUtil.getRainbowColor(10, i * 5).getRGB();
+                int color2 = ColorUtil.getRainbowColor(10, (i + 1) * 5).getRGB();
+                buffer.addVertex(x1, y1, z1).setColor(color1).setNormal(normalX, 0.0f, normalZ);
+                buffer.addVertex(x2, y2, z2).setColor(color2).setNormal(normalX, 0.0f, normalZ);
+            }
+            buffers.endBatch(RenderType.lines());
+        });
     }
 
     public static void drawColoredBox(AABB box, PoseStack poseStack, Color topColor, Color bottomColor) {
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer buffer = buffers.getBuffer(RenderType.lines());
-        ShapeRenderer.renderLineBox(poseStack, buffer, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ,
-                bottomColor.getRed() / 255.0f, bottomColor.getGreen() / 255.0f, bottomColor.getBlue() / 255.0f,
-                bottomColor.getAlpha() / 255.0f, topColor.getRed() / 255.0f,
-                topColor.getGreen() / 255.0f, topColor.getBlue() / 255.0f);
-        buffers.endBatch(RenderType.lines());
+        WorldOverlayRenderer.drawOutlineBox(
+                box,
+                poseStack,
+                bottomColor.getRed() / 255.0f,
+                bottomColor.getGreen() / 255.0f,
+                bottomColor.getBlue() / 255.0f,
+                bottomColor.getAlpha() / 255.0f,
+                topColor.getRed() / 255.0f,
+                topColor.getGreen() / 255.0f,
+                topColor.getBlue() / 255.0f);
     }
 
     public static void drawFilledColoredBox(AABB box, PoseStack poseStack, Color topColor, Color bottomColor) {

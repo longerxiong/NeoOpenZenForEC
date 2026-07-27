@@ -324,15 +324,12 @@ public class Scaffold extends Module {
     @EventTarget
     public void onRender(RenderEvent event) {
         if (this.currentPlacement == null || mc.gameRenderer == null) return;
+        // World-space AABB; camera transform is applied inside WorldOverlayRenderer.
         PoseStack poseStack = event.poseStack();
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.pushPose();
-        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         AABB box = new AABB(this.currentPlacement.position.relative(this.currentPlacement.facing));
         Color color = new Color(74, 144, 226);
         RenderUtil.drawSolidBox(box, poseStack, color, 0.25f);
         RenderUtil.drawOutlineBox(box, poseStack, color, 0.75f);
-        poseStack.popPose();
     }
 
     @EventTarget

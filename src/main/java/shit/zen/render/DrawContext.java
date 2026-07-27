@@ -495,11 +495,16 @@ public class DrawContext {
         }
         float normalX = -dy / length * strokeWidth * 0.5f;
         float normalY = dx / length * strokeWidth * 0.5f;
+        // Emitted back-to-front (p2 side first) so the quad's winding matches
+        // drawRectXYWH. The natural p1 -> p2 order yields the OPPOSITE winding for
+        // every line direction, which back-face culling silently discards — the
+        // same hazard called out in drawRoundedTexture. Do not "simplify" this
+        // order: lines then vanish entirely instead of rendering.
         this.submit(RenderPipelines.GUI, TextureSetup.noTexture(), List.of(
-                vertex(x1 + normalX, y1 + normalY, color),
-                vertex(x1 - normalX, y1 - normalY, color),
+                vertex(x2 + normalX, y2 + normalY, color),
                 vertex(x2 - normalX, y2 - normalY, color),
-                vertex(x2 + normalX, y2 + normalY, color)));
+                vertex(x1 - normalX, y1 - normalY, color),
+                vertex(x1 + normalX, y1 + normalY, color)));
     }
 
     private void drawStrokedSegment(float x1, float y1, float x2, float y2, Paint paint, StrokeState state) {

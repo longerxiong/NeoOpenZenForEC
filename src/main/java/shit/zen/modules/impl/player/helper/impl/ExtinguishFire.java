@@ -99,13 +99,9 @@ extends HelperBase {
         }
         Color color = new Color(255, 0, 0);
         PoseStack poseStack = renderEvent.poseStack();
-        Vec3 vec3 = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.pushPose();
-        poseStack.translate(-vec3.x, -vec3.y, -vec3.z);
         AABB aABB = new AABB(this.firePos);
         RenderUtil.drawSolidBox(aABB, poseStack, color, 0.25f);
         RenderUtil.drawOutlineBox(aABB, poseStack, color, 0.75f);
-        poseStack.popPose();
     }
 
     private void findFirePos() {

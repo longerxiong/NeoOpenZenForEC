@@ -142,11 +142,6 @@ public class KillAura extends Module {
         Entity entity = aimingTarget;
         if (entity == null || mc.gameRenderer == null) return;
         PoseStack poseStack = event.poseStack();
-        poseStack.pushPose();
-        Camera camera = mc.gameRenderer.getMainCamera();
-        Vec3 cameraPos = camera.getPosition();
-        poseStack.translate(-cameraPos.x(), -cameraPos.y(), -cameraPos.z());
-
         double dx = entity.getX() - entity.xOld;
         double dy = entity.getY() - entity.yOld;
         double dz = entity.getZ() - entity.zOld;
@@ -194,7 +189,6 @@ public class KillAura extends Module {
             default -> {
             }
         }
-        poseStack.popPose();
     }
 
     @EventTarget

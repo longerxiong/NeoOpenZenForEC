@@ -130,9 +130,6 @@ public class Projectiles extends Module {
         boolean holdingThrowable = this.isThrowable(mainItem) || this.isThrowable(offItem);
         Item heldThrowable = this.isThrowable(mainItem) ? mainItem : offItem;
         PoseStack poseStack = renderEvent.poseStack();
-        Vec3 camera = mc.gameRenderer.getMainCamera().getPosition();
-        poseStack.pushPose();
-        poseStack.translate(-camera.x, -camera.y, -camera.z);
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof Projectile)) continue;
             if (!entity.isAlive()) continue;
@@ -153,12 +150,10 @@ public class Projectiles extends Module {
             simulation = this.simulateTrajectory(renderEvent.partialTick());
         }
         if (simulation == null) {
-            poseStack.popPose();
             return;
         }
         List<Vec3> path = simulation.path();
         if (path.size() < 2) {
-            poseStack.popPose();
             return;
         }
         path.remove(0);
@@ -167,7 +162,6 @@ public class Projectiles extends Module {
             Vec3 endpoint = path.get(path.size() - 1);
             this.drawEndPoint(poseStack, endpoint, simulation.hitResult, renderEvent.partialTick());
         }
-        poseStack.popPose();
     }
 
     @EventTarget
@@ -292,13 +286,15 @@ public class Projectiles extends Module {
     }
 
     private void drawLine(PoseStack poseStack, List<Vec3> path) {
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        RenderType renderType = RenderType.debugLineStrip(1.0);
-        VertexConsumer buffer = buffers.getBuffer(renderType);
-        for (Vec3 vec3 : path) {
-            buffer.addVertex(poseStack.last().pose(), (float)vec3.x, (float)vec3.y, (float)vec3.z).setColor(Color.WHITE.getRGB());
-        }
-        buffers.endBatch(renderType);
+        shit.zen.utils.render.WorldOverlayRenderer.withIdentityModelView(() -> {
+            MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+            RenderType renderType = RenderType.debugLineStrip(1.0);
+            VertexConsumer buffer = buffers.getBuffer(renderType);
+            for (Vec3 vec3 : path) {
+                buffer.addVertex(poseStack.last().pose(), (float)vec3.x, (float)vec3.y, (float)vec3.z).setColor(Color.WHITE.getRGB());
+            }
+            buffers.endBatch(renderType);
+        });
     }
 
     private void drawEndPoint(PoseStack poseStack, Vec3 vec3, HitResult hitResult, float partial) {
@@ -323,23 +319,25 @@ public class Projectiles extends Module {
     }
 
     private void drawFacePlane(PoseStack poseStack, Vec3 center, Direction direction, float radius, Color color) {
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        RenderType renderType = RenderType.debugTriangleFan();
-        VertexConsumer buffer = buffers.getBuffer(renderType);
-        Vec3 normal = new Vec3(direction.getStepX(), direction.getStepY(), direction.getStepZ());
-        Vec3 up = Math.abs(normal.y) > 0.9 ? new Vec3(1.0, 0.0, 0.0) : new Vec3(0.0, 1.0, 0.0);
-        Vec3 tangent = normal.cross(up).normalize();
-        Vec3 bitangent = normal.cross(tangent).normalize();
-        buffer.addVertex(poseStack.last().pose(), (float)center.x, (float)center.y, (float)center.z).setColor(color.getRGB());
-        int segments = 40;
-        for (int i = 0; i <= segments; ++i) {
-            double angle = Math.PI * 2 * i / segments;
-            double dx = radius * Math.cos(angle);
-            double dy = radius * Math.sin(angle);
-            Vec3 point = center.add(tangent.scale(dx)).add(bitangent.scale(dy));
-            buffer.addVertex(poseStack.last().pose(), (float)point.x, (float)point.y, (float)point.z).setColor(color.getRGB());
-        }
-        buffers.endBatch(renderType);
+        shit.zen.utils.render.WorldOverlayRenderer.withIdentityModelView(() -> {
+            MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+            RenderType renderType = RenderType.debugTriangleFan();
+            VertexConsumer buffer = buffers.getBuffer(renderType);
+            Vec3 normal = new Vec3(direction.getStepX(), direction.getStepY(), direction.getStepZ());
+            Vec3 up = Math.abs(normal.y) > 0.9 ? new Vec3(1.0, 0.0, 0.0) : new Vec3(0.0, 1.0, 0.0);
+            Vec3 tangent = normal.cross(up).normalize();
+            Vec3 bitangent = normal.cross(tangent).normalize();
+            buffer.addVertex(poseStack.last().pose(), (float)center.x, (float)center.y, (float)center.z).setColor(color.getRGB());
+            int segments = 40;
+            for (int i = 0; i <= segments; ++i) {
+                double angle = Math.PI * 2 * i / segments;
+                double dx = radius * Math.cos(angle);
+                double dy = radius * Math.sin(angle);
+                Vec3 point = center.add(tangent.scale(dx)).add(bitangent.scale(dy));
+                buffer.addVertex(poseStack.last().pose(), (float)point.x, (float)point.y, (float)point.z).setColor(color.getRGB());
+            }
+            buffers.endBatch(renderType);
+        });
     }
 
     private SimulationResult simulateTrajectory(float partial) {
@@ -437,55 +435,58 @@ public class Projectiles extends Module {
         ClientLevel level = mc.level;
         Color color = provider.getColor(entity);
         if (color == null) color = new Color(255, 255, 255);
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        RenderType renderType = RenderType.debugLineStrip(1.0);
-        VertexConsumer buffer = buffers.getBuffer(renderType);
-        double x = entity.getX(), y = entity.getY(), z = entity.getZ();
-        double dx = entity.getDeltaMovement().x;
-        double dy = entity.getDeltaMovement().y;
-        double dz = entity.getDeltaMovement().z;
-        this.drawVertex(color, buffer, poseStack, x, y, z);
-        for (int step = 0; step < 1000; ++step) {
-            float halfWidth = provider.getFillAlpha();
-            float height = provider.getOutlineAlpha();
-            AABB box = new AABB(x - halfWidth, y, z - halfWidth, x + halfWidth, y + height, z + halfWidth);
-            Vec3 start = new Vec3(x, y, z);
-            Vec3 end = new Vec3(x + dx, y + dy, z + dz);
-            HitResult hit = RayTraceUtil.clipWithEntity(start, end, false, entity instanceof Arrow, false, entity);
-            if (hit != null && !hit.getType().equals(HitResult.Type.MISS)) {
-                end = new Vec3(hit.getLocation().x(), hit.getLocation().y(), hit.getLocation().z());
-            }
-            List<Entity> entities = level.getEntities(localPlayer, box.contract(dx, dy, dz).expandTowards(1.0, 1.0, 1.0));
-            double bestDist = 0.0;
-            for (Entity other : entities) {
-                if (!(other instanceof LivingEntity) || other instanceof EnderMan
-                        || !entity.canCollideWith(other) || other.equals(localPlayer)) continue;
-                AABB otherBox = other.getBoundingBox().expandTowards(0.3, 0.3, 0.3);
-                EntityHitResult ehit = RayTraceUtil.getEntityHit(otherBox, start, end);
-                if (ehit == null) continue;
-                double dist = start.distanceTo(ehit.getLocation());
-                if (dist < bestDist || bestDist == 0.0) {
-                    bestDist = dist;
-                    hit = ehit;
+        Color finalColor = color;
+        shit.zen.utils.render.WorldOverlayRenderer.withIdentityModelView(() -> {
+            MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+            RenderType renderType = RenderType.debugLineStrip(1.0);
+            VertexConsumer buffer = buffers.getBuffer(renderType);
+            double x = entity.getX(), y = entity.getY(), z = entity.getZ();
+            double dx = entity.getDeltaMovement().x;
+            double dy = entity.getDeltaMovement().y;
+            double dz = entity.getDeltaMovement().z;
+            this.drawVertex(finalColor, buffer, poseStack, x, y, z);
+            for (int step = 0; step < 1000; ++step) {
+                float halfWidth = provider.getFillAlpha();
+                float height = provider.getOutlineAlpha();
+                AABB box = new AABB(x - halfWidth, y, z - halfWidth, x + halfWidth, y + height, z + halfWidth);
+                Vec3 start = new Vec3(x, y, z);
+                Vec3 end = new Vec3(x + dx, y + dy, z + dz);
+                HitResult hit = RayTraceUtil.clipWithEntity(start, end, false, entity instanceof Arrow, false, entity);
+                if (hit != null && !hit.getType().equals(HitResult.Type.MISS)) {
+                    end = new Vec3(hit.getLocation().x(), hit.getLocation().y(), hit.getLocation().z());
                 }
+                List<Entity> entities = level.getEntities(localPlayer, box.contract(dx, dy, dz).expandTowards(1.0, 1.0, 1.0));
+                double bestDist = 0.0;
+                for (Entity other : entities) {
+                    if (!(other instanceof LivingEntity) || other instanceof EnderMan
+                            || !entity.canCollideWith(other) || other.equals(localPlayer)) continue;
+                    AABB otherBox = other.getBoundingBox().expandTowards(0.3, 0.3, 0.3);
+                    EntityHitResult ehit = RayTraceUtil.getEntityHit(otherBox, start, end);
+                    if (ehit == null) continue;
+                    double dist = start.distanceTo(ehit.getLocation());
+                    if (dist < bestDist || bestDist == 0.0) {
+                        bestDist = dist;
+                        hit = ehit;
+                    }
+                }
+                x += dx;
+                y += dy;
+                z += dz;
+                if (hit != null && !hit.getType().equals(HitResult.Type.MISS)) {
+                    x = hit.getLocation().x();
+                    y = hit.getLocation().y();
+                    z = hit.getLocation().z();
+                    break;
+                }
+                if (y < -128.0) break;
+                double drag = entity.isInWater() ? 0.8 : 0.99;
+                dy = dy * drag - provider.getLineWidth();
+                dx *= drag;
+                dz *= drag;
+                this.drawVertex(finalColor, buffer, poseStack, x, y, z);
             }
-            x += dx;
-            y += dy;
-            z += dz;
-            if (hit != null && !hit.getType().equals(HitResult.Type.MISS)) {
-                x = hit.getLocation().x();
-                y = hit.getLocation().y();
-                z = hit.getLocation().z();
-                break;
-            }
-            if (y < -128.0) break;
-            double drag = entity.isInWater() ? 0.8 : 0.99;
-            dy = dy * drag - provider.getLineWidth();
-            dx *= drag;
-            dz *= drag;
-            this.drawVertex(color, buffer, poseStack, x, y, z);
-        }
-        buffers.endBatch(renderType);
+            buffers.endBatch(renderType);
+        });
     }
 
     private void drawVertex(Color color, VertexConsumer buffer, PoseStack poseStack, double x, double y, double z) {

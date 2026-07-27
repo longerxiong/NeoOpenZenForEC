@@ -48,6 +48,7 @@ import shit.zen.settings.impl.NumberSetting;
 import lombok.EqualsAndHashCode;
 import shit.zen.utils.game.PlayerUtil;
 import shit.zen.utils.misc.ChatUtil;
+import shit.zen.utils.render.RenderUtil;
 
 /**
  * XRay — ore locator with two visual layers:
@@ -238,16 +239,12 @@ public class XRay extends Module {
         if (!ZenClient.isReady()) {
             return;
         }
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
         PoseStack poseStack = event.poseStack();
-        MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        RenderType renderType = RenderType.lines();
-        VertexConsumer buffer = buffers.getBuffer(renderType);
         if (!this.foundBlocks.isEmpty()) {
             double rangeSq = Math.pow(this.scanRangeSetting.getValue().doubleValue(), 2.0);
             for (Map.Entry<BlockPos, Block> entry : this.foundBlocks.entrySet()) {
                 if (entry.getKey().distSqr(mc.player.blockPosition()) <= rangeSq) {
-                    this.renderBlock(poseStack, buffer, entry.getKey(), entry.getValue().defaultBlockState(), cameraPos);
+                    this.renderBlock(poseStack, entry.getKey(), entry.getValue().defaultBlockState());
                 }
             }
         }
@@ -257,15 +254,14 @@ public class XRay extends Module {
                 if (this.isEnabledOreBlock(state.getBlock())) {
                     BlockPos pos = key.toBlockPos();
                     if (pos.distSqr(mc.player.blockPosition()) <= blindRangeSq) {
-                        this.renderBlock(poseStack, buffer, pos, state, cameraPos);
+                        this.renderBlock(poseStack, pos, state);
                     }
                 }
             });
         }
-        buffers.endBatch(renderType);
     }
 
-    private void renderBlock(PoseStack poseStack, VertexConsumer buffer, BlockPos pos, BlockState state, Vec3 cameraPos) {
+    private void renderBlock(PoseStack poseStack, BlockPos pos, BlockState state) {
         if (state == null || state.isAir()) {
             return;
         }
@@ -273,10 +269,7 @@ public class XRay extends Module {
         if (color == null) {
             return;
         }
-        poseStack.pushPose();
-        poseStack.translate(pos.getX() - cameraPos.x, pos.getY() - cameraPos.y, pos.getZ() - cameraPos.z);
-        this.drawWireBox(poseStack, buffer, new AABB(0.0, 0.0, 0.0, 1.0, 1.0, 1.0), color);
-        poseStack.popPose();
+        RenderUtil.drawOutlineBox(new AABB(pos), poseStack, color, 1.0f);
     }
 
     private void scanRegion(int radius, Map<BlockPos, Block> out) {
