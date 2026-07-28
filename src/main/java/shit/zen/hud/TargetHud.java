@@ -15,7 +15,7 @@ import shit.zen.event.impl.Render2DEvent;
 import shit.zen.hud.target.RoundTargetStyle;
 import shit.zen.hud.target.TargetStyle;
 import shit.zen.modules.impl.combat.KillAura;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 import shit.zen.utils.math.Easings;
 import shit.zen.event.EventTarget;

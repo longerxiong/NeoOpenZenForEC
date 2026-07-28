@@ -21,7 +21,7 @@ import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.movement.Scaffold;
 import shit.zen.modules.impl.player.Stuck;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.animation.Timer;
 import shit.zen.utils.game.PlayerUtil;
 import shit.zen.utils.game.RotationUtil;

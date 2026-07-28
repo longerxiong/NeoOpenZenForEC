@@ -80,15 +80,29 @@ public class LivingEntityPatch {
         return event.getYaw();
     }
 
+    public static float overrideJumpYaw = Float.NaN;
+
     @Inject(method = "travel", desc = "(Lnet/minecraft/world/phys/Vec3;)V", at = @At(At.Type.HEAD))
     public static void onTravel(LivingEntity entity, Vec3 movement, CallbackInfo callbackInfo) throws Exception {
         if (entity == null || entity != ClientBase.mc.player || !ZenClient.isReady()) return;
-        JumpEvent event = new JumpEvent();
+        JumpEvent event = new JumpEvent(entity.getYRot());
         ZenClient.getInstance().getEventBus().call(event);
+        overrideJumpYaw = event.getYaw();
         if (event.isCancelled()) {
             PlayerUtil.updateWalkAnim();
         }
         callbackInfo.cancelled = event.isCancelled();
+    }
+
+    @WrapInvoke(method = "travel", desc = "(Lnet/minecraft/world/phys/Vec3;)V",
+            target = "net/minecraft/world/entity/Entity/getYRot", targetDesc = "()F")
+    public static float onTravelGetYRot(LivingEntity entity, Invocation<LivingEntity, Float> original) throws Exception {
+        if (entity == ClientBase.mc.player && !Float.isNaN(overrideJumpYaw)) {
+            float yaw = overrideJumpYaw;
+            overrideJumpYaw = Float.NaN;
+            return yaw;
+        }
+        return original.call();
     }
 
     @WrapInvoke(method = "updateFallFlyingMovement", desc = "(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;", target = "net/minecraft/world/entity/Entity/getXRot", targetDesc = "()F")

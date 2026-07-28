@@ -6,9 +6,9 @@ import shit.zen.event.impl.RenderEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.render.nametag.NameTagStyle;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.event.EventTarget;
 
 public class NameTags

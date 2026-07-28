@@ -6,6 +6,7 @@ import asm.patchify.annotation.Patch;
 import asm.patchify.annotation.Transform;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -18,10 +19,9 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import shit.zen.ZenClient;
-import shit.zen.event.impl.GameTickEvent;
-import shit.zen.event.impl.MotionEvent;
-import shit.zen.event.impl.SlowdownEvent;
-import shit.zen.event.impl.SprintEvent;
+import shit.zen.event.impl.*;
+import shit.zen.modules.impl.movement.Sprint;
+import shit.zen.utils.game.MovementUtil;
 import shit.zen.utils.misc.ReflectionUtil;
 
 @Patch(LocalPlayer.class)
@@ -144,6 +144,25 @@ public class LocalPlayerPatch {
             if (insn.getOpcode() == Opcodes.RETURN) {
                 methodNode.instructions.insertBefore(insn, createPostMotionEvent());
             }
+        }
+    }
+
+    private static boolean handlingMoveEvent = false;
+
+    @Inject(method = "move", desc = "(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V", at = @At(value = At.Type.HEAD))
+    public static void onMove(LocalPlayer player, MoverType type, Vec3 movement, CallbackInfo ci) {
+        if (handlingMoveEvent) return;
+        MoveEvent event = new MoveEvent(movement.x, movement.y, movement.z);
+        if (ZenClient.isReady()) {
+            ZenClient.getInstance().getEventBus().call(event);
+        }
+        if (event.isCancelled()) {
+            ci.cancel();
+        } else if (event.getX() != movement.x || event.getY() != movement.y || event.getZ() != movement.z) {
+            handlingMoveEvent = true;
+            player.move(type, new Vec3(event.getX(), event.getY(), event.getZ()));
+            handlingMoveEvent = false;
+            ci.cancel();
         }
     }
 

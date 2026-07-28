@@ -15,8 +15,8 @@ import shit.zen.render.Paint;
 import shit.zen.render.Renderer;
 import shit.zen.render.RoundedRectangle;
 import shit.zen.render.TextGlow;
-import shit.zen.settings.Setting;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.Setting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.utils.math.LerpUtil;
 
 public class ModeSettingRenderer

@@ -13,10 +13,10 @@ import shit.zen.ZenClient;
 import shit.zen.exception.ModuleNotFoundException;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.world.WebUI;
-import shit.zen.settings.Setting;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.Setting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.render.TextureUtil;
 
 public class SetSettingHandler extends AbstractHttpHandler {

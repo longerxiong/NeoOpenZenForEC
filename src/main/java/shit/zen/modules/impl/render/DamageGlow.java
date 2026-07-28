@@ -23,7 +23,7 @@ import shit.zen.event.impl.EntityRemoveEvent;
 import shit.zen.event.impl.RenderEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.event.EventTarget;
 
 public class DamageGlow extends Module {

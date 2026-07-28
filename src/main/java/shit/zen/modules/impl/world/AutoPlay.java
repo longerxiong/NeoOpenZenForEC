@@ -6,7 +6,7 @@ import shit.zen.event.impl.PacketEvent;
 import shit.zen.event.impl.TickEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.misc.ChatUtil;
 import shit.zen.event.EventTarget;
 

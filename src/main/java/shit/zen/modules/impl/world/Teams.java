@@ -6,7 +6,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 
 public class Teams
 extends Module {

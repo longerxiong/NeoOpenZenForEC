@@ -6,7 +6,7 @@ import net.minecraft.world.entity.LivingEntity;
 import shit.zen.event.impl.GlRenderEvent;
 import shit.zen.event.impl.Render2DEvent;
 import shit.zen.modules.impl.combat.KillAura;
-import shit.zen.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 import shit.zen.utils.animation.Timer;
 import shit.zen.utils.math.Easings;

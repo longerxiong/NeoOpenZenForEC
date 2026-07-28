@@ -7,7 +7,7 @@ import shit.zen.gui.OldClickGui;
 import shit.zen.gui.PanelClickGui;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 
 public class ClickGuiModule
 extends Module {

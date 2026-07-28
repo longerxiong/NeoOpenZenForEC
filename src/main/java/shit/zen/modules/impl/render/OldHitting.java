@@ -7,8 +7,8 @@ import org.joml.Quaternionf;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.KillAura;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 
 public class OldHitting
 extends Module {
@@ -26,7 +26,7 @@ extends Module {
     public boolean isKillAuraAttacking() {
         return KillAura.INSTANCE != null
                 && KillAura.INSTANCE.isEnabled()
-                && KillAura.INSTANCE.fakeAutoBlock.getValue()
+                && KillAura.INSTANCE.autoBlock.getValue()
                 && KillAura.aimingTarget != null;
     }
 

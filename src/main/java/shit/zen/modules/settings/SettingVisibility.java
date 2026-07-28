@@ -1,4 +1,4 @@
-package shit.zen.settings;
+package shit.zen.modules.settings;
 
 @FunctionalInterface
 public interface SettingVisibility {

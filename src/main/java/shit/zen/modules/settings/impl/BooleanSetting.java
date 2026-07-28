@@ -1,9 +1,9 @@
-package shit.zen.settings.impl;
+package shit.zen.modules.settings.impl;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import shit.zen.settings.Setting;
-import shit.zen.settings.SettingVisibility;
+import shit.zen.modules.settings.Setting;
+import shit.zen.modules.settings.SettingVisibility;
 
 public class BooleanSetting
 extends Setting<Boolean> {

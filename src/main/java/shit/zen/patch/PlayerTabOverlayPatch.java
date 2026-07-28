@@ -26,7 +26,7 @@ import shit.zen.ZenClient;
 import shit.zen.event.impl.ChatReceiveEvent;
 import shit.zen.hud.TabListInfo;
 import shit.zen.modules.impl.render.Watermark;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.utils.misc.ReflectionUtil;
 
 @Patch(PlayerTabOverlay.class)

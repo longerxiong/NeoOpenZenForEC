@@ -17,7 +17,7 @@ import shit.zen.render.Paint;
 import shit.zen.render.Path;
 import shit.zen.render.ShadowFactory;
 import shit.zen.render.ShadowMode;
-import shit.zen.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.event.EventTarget;
 
 public class Compass

@@ -8,13 +8,12 @@ import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shit.zen.ZenClient;
-import shit.zen.config.Config;
 import shit.zen.hud.HudElement;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.MultiSelectSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.MultiSelectSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 
 public class ValuesConfig
 extends Config {

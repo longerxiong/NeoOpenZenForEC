@@ -39,14 +39,13 @@ import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.movement.GuiMove;
 import shit.zen.modules.impl.movement.Scaffold;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.animation.Timer;
 import shit.zen.utils.game.BlockUtil;
 import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.game.MovementUtil;
-import shit.zen.utils.misc.ChatUtil;
 import shit.zen.utils.misc.PacketUtil;
 import shit.zen.event.EventTarget;
 

@@ -13,15 +13,14 @@ import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
 import shit.zen.event.impl.MotionEvent;
 import shit.zen.event.impl.PacketEvent;
 import shit.zen.event.impl.WorldChangeEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.misc.ChatUtil;
 import shit.zen.event.EventTarget;
 

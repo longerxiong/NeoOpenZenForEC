@@ -2,7 +2,7 @@ package shit.zen.modules.impl.render;
 
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.misc.Triple;
 import shit.zen.utils.misc.TripleProvider;
 

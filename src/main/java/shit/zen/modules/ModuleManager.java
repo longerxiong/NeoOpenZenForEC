@@ -1,4 +1,4 @@
-package shit.zen.manager;
+package shit.zen.modules;
 
 import java.util.List;
 import java.util.Map;
@@ -9,8 +9,6 @@ import shit.zen.ClientBase;
 import shit.zen.ZenClient;
 import shit.zen.event.impl.KeyEvent;
 import shit.zen.exception.ModuleNotFoundException;
-import shit.zen.modules.Category;
-import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.AntiBots;
 import shit.zen.modules.impl.combat.AntiFireball;
 import shit.zen.modules.impl.combat.AntiKB;
@@ -28,17 +26,7 @@ import shit.zen.modules.impl.misc.AutoClicker;
 import shit.zen.modules.impl.misc.AutoRod;
 import shit.zen.modules.impl.misc.SafeWalk;
 import shit.zen.modules.impl.movement.*;
-import shit.zen.modules.impl.player.AntiTNT;
-import shit.zen.modules.impl.player.AntiVoid;
-import shit.zen.modules.impl.player.AntiWeb;
-import shit.zen.modules.impl.player.AutoMLG;
-import shit.zen.modules.impl.player.ChestStealer;
-import shit.zen.modules.impl.player.GhostHand;
-import shit.zen.modules.impl.player.Helper;
-import shit.zen.modules.impl.player.InventoryManager;
-import shit.zen.modules.impl.player.MidPearl;
-import shit.zen.modules.impl.player.NoFall;
-import shit.zen.modules.impl.player.Stuck;
+import shit.zen.modules.impl.player.*;
 import shit.zen.modules.impl.render.AspectRatio;
 import shit.zen.modules.impl.render.ChestESP;
 import shit.zen.modules.impl.render.ClickGuiModule;
@@ -102,7 +90,7 @@ public class ModuleManager extends ClientBase {
         this.register(new Scaffold());
         this.register(new Sprint());
         this.register(new TargetStrafe());
-        this.register(new Speed());
+        this.register(new SpeedModule());
         this.register(new KeepSprint());
 
         this.register(new AntiTNT());

@@ -14,8 +14,6 @@ import shit.zen.network.webui.SetSettingHandler;
 import shit.zen.network.webui.SettingsHandler;
 import shit.zen.network.webui.StaticFileHandler;
 import shit.zen.network.webui.ToggleModuleHandler;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.NumberSetting;
 import shit.zen.utils.misc.ChatUtil;
 
 public class WebUI extends Module {

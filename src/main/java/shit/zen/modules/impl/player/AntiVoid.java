@@ -16,7 +16,7 @@ import shit.zen.event.impl.TickEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.movement.Scaffold;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.game.MotionSimulator;
 import shit.zen.utils.game.PlayerUtil;
 import shit.zen.utils.misc.PacketUtil;

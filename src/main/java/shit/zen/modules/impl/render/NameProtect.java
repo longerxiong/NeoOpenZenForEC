@@ -5,12 +5,11 @@ import java.util.Random;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import org.apache.commons.lang3.StringUtils;
-import shit.zen.ZenClient;
 import shit.zen.event.impl.ChatReceiveEvent;
 import shit.zen.event.impl.DisconnectEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.event.EventTarget;
 
 public class NameProtect

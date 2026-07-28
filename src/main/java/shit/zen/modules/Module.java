@@ -7,10 +7,7 @@ import lombok.Getter;
 import lombok.Generated;
 import shit.zen.ClientBase;
 import shit.zen.ZenClient;
-import shit.zen.hud.ModuleListHud;
-import shit.zen.modules.Category;
-import shit.zen.modules.KeyBind;
-import shit.zen.settings.Setting;
+import shit.zen.modules.settings.Setting;
 
 public abstract class Module
 extends ClientBase {

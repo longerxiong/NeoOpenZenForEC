@@ -16,7 +16,7 @@ import shit.zen.event.impl.PreMotionEvent;
 import shit.zen.event.impl.TickEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.utils.game.RotationUtil;
 import shit.zen.utils.misc.PacketUtil;
 import shit.zen.utils.rotation.Rotation;

@@ -52,7 +52,7 @@ extends Module {
                 moveYaw -= 90.0f;
             }
             double moveYawRad = Math.toRadians(moveYaw);
-            double speedBoost = 0.065f * (float)Math.min(4, collisionCount);
+            double speedBoost = 0.105f * (float)Math.min(4, collisionCount);
             if (TargetStrafe.strafeTarget != null && TargetStrafe.INSTANCE.isEnabled() && (!TargetStrafe.isSmartStrafe() || mc.options.keyJump.isDown())) {
                 float angleStep = (float)(speedBoost / ((double)TargetStrafe.getRange() * Math.PI * 2.0) * 360.0) * (float)TargetStrafe.strafeDirectionSign;
                 Rotation rotation = RotationUtil.rotationToForBow(new Vec3(TargetStrafe.strafeTarget.getX(), TargetStrafe.strafeTarget.getY(), TargetStrafe.strafeTarget.getZ()), new Vec3(mc.player.getX(), mc.player.getY(), mc.player.getZ()));

@@ -2,17 +2,14 @@ package shit.zen.gui.newclickgui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.Mth;
 import shit.zen.gui.NewClickGui;
-import shit.zen.gui.newclickgui.CategoryPanel;
-import shit.zen.gui.newclickgui.SettingElement;
 import shit.zen.render.FontStore;
-import shit.zen.settings.impl.MultiSelectSetting;
+import shit.zen.modules.settings.impl.MultiSelectSetting;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 import shit.zen.utils.math.Easings;
 import shit.zen.utils.misc.CursorUtil;

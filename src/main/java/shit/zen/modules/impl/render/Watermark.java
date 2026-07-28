@@ -6,7 +6,7 @@ import shit.zen.hud.DynamicIsland;
 import shit.zen.hud.NeverloseWatermark;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.event.EventTarget;
 
 public class Watermark extends Module {

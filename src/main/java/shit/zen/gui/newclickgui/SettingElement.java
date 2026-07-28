@@ -2,9 +2,7 @@ package shit.zen.gui.newclickgui;
 
 import lombok.Getter;
 import lombok.Generated;
-import shit.zen.gui.newclickgui.CategoryPanel;
-import shit.zen.gui.newclickgui.UIElement;
-import shit.zen.settings.Setting;
+import shit.zen.modules.settings.Setting;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 
 public abstract class SettingElement<T extends Setting<?>>

@@ -5,7 +5,7 @@ import shit.zen.event.impl.KeepSprintEvent;
 import shit.zen.event.impl.SprintEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
-import shit.zen.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.event.EventTarget;
 
 /**

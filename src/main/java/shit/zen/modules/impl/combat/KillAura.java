@@ -8,9 +8,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import net.minecraft.client.Camera;
+
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -45,14 +50,15 @@ import shit.zen.modules.impl.player.Helper;
 import shit.zen.modules.impl.player.MidPearl;
 import shit.zen.modules.impl.player.Stuck;
 import shit.zen.modules.impl.world.Teams;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.game.EntityUtil;
 import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.game.RotationUtil;
 import shit.zen.utils.math.MathUtil;
 import shit.zen.utils.misc.ChatUtil;
+import shit.zen.utils.misc.PacketUtil;
 import shit.zen.utils.render.RenderUtil;
 import shit.zen.utils.rotation.Rotation;
 import shit.zen.utils.rotation.RotationHandler;
@@ -77,8 +83,10 @@ public class KillAura extends Module {
     public final BooleanSetting keepSprint      = new BooleanSetting("Keep Sprint", true);
     public final BooleanSetting movementFix     = new BooleanSetting("Movement Fix", true);
     public final BooleanSetting ignoreSkipTicks = new BooleanSetting("Ignore skip ticks", false);
-    public final BooleanSetting fakeAutoBlock   = new BooleanSetting("Fake AutoBlock", true);
-    public final BooleanSetting test            = new BooleanSetting("Test", false);
+    public final BooleanSetting autoBlock   = new BooleanSetting("AutoBlock", true);
+    public final ModeSetting autoBlockMode = new ModeSetting("AutoBlock Mode", "Fake", "Gapple").withDefault("Fake");
+//    public final BooleanSetting test            = new BooleanSetting("Test", false);
+    public final NumberSetting blockRange = new NumberSetting("Block Range", 4.0, 1.0, 6.0, 0.1, autoBlock::getValue);
     public final NumberSetting aimRange    = new NumberSetting("Aim Range", 4.0, 1.0, 6.0, 0.1);
     public final NumberSetting attackRange = new NumberSetting("Attack Range", 3.0, 1.0, 6.0, 0.1);
     public final NumberSetting maxAps      = new NumberSetting("Max APS", 12.0, 1.0, 20.0, 1.0);
@@ -114,11 +122,13 @@ public class KillAura extends Module {
         target = null;
         aimingTarget = null;
         targetList.clear();
+        blocking = false;
         super.onEnable();
     }
 
     @Override
     public void onDisable() {
+        stopBlock();
         this.attacks = 0.0f;
         target = null;
         aimingTarget = null;
@@ -206,6 +216,17 @@ public class KillAura extends Module {
         if (!ZenClient.isReady()) {
             return;
         }
+
+        // AutoBlock: block/unblock based on distance to target
+        if (autoBlock.getValue() && mc.player != null) {
+            Entity blockTarget = aimingTarget != null ? aimingTarget : target;
+            if (blockTarget != null && mc.player.distanceTo(blockTarget) <= getBlockRange()) {
+                doBlock();
+            } else {
+                stopBlock();
+            }
+        }
+
         if (mc.screen instanceof AbstractContainerScreen
                 || ItemUtil.hasServerItem()
                 || (Stuck.INSTANCE != null && Stuck.INSTANCE.isEnabled())
@@ -297,7 +318,7 @@ public class KillAura extends Module {
             this.attacks = 0.0f;
             return;
         }
-        if (mc.player.getUseItem().isEmpty()
+        if (mc.player.getUseItem().isEmpty() || (autoBlock.getValue() && autoBlockMode.is("Gapple"))
                 && mc.screen == null
                 && (this.ignoreSkipTicks.getValue() || ClientBase.delayPackets.isEmpty())) {
             while (this.attacks >= 1.0f) {
@@ -379,14 +400,14 @@ public class KillAura extends Module {
             if (livingEntity.isDeadOrDying() || livingEntity.getHealth() <= 0.0f) return false;
             if (entity instanceof ArmorStand) return false;
             if (entity.isInvisible() && !(Boolean) this.attackInvisible.getValue()) return false;
-            if (entity instanceof Player player) {
-                if (this.test.getValue() && player.getY() >= mc.player.getY() + 0.05f) {
-                    return true;
-                }
-                // ZenClient.isOwner() was stripped during deobfuscation; the
-                // original jar bailed here when the entity name matched the
-                // client owner. Re-enable once that helper is restored.
-            }
+//            if (entity instanceof Player player) {
+//                if (this.test.getValue() && player.getY() >= mc.player.getY() + 0.05f) {
+//                    return true;
+//                }
+//                // ZenClient.isOwner() was stripped during deobfuscation; the
+//                // original jar bailed here when the entity name matched the
+//                // client owner. Re-enable once that helper is restored.
+//            }
             if (Teams.isSameTeam(entity)) return false;
             if (entity instanceof Player && !(Boolean) this.attackPlayer.getValue()) return false;
             if (entity instanceof Player && (entity.getBbWidth() < 0.5 || livingEntity.isSleeping())) return false;
@@ -422,6 +443,10 @@ public class KillAura extends Module {
 
     private double getTargetRange() {
         return Math.max(this.aimRange.getValue().doubleValue(), this.getAttackRange());
+    }
+
+    private double getBlockRange() {
+        return this.blockRange.getValue().doubleValue();
     }
 
     public void attackEntity(Entity entity) {
@@ -462,6 +487,30 @@ public class KillAura extends Module {
         if (this.delayMode.is("1.9")) {
             this.sprintCounter = (int) mc.player.getCurrentItemAttackStrengthDelay();
         }
+    }
+
+    private boolean blocking;
+
+    private void doBlock() {
+        if (mc.player == null || blocking) return;
+        switch(autoBlockMode.getValue()){
+            case "Fake" ->{}
+            case "Gapple" ->{
+                mc.options.keyUse.setDown(true);
+            }
+        }
+        blocking = true;
+    }
+
+    private void stopBlock() {
+        if (mc.player == null || !blocking) return;
+        switch(autoBlockMode.getValue()){
+            case "Fake" ->{}
+            case "Gapple" ->{
+                mc.options.keyUse.setDown(false);
+            }
+        }
+        blocking = false;
     }
 
     private boolean isWebPlacing() {

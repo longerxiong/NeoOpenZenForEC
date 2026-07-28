@@ -1,11 +1,10 @@
-package shit.zen.settings;
+package shit.zen.modules.settings;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Generated;
-import shit.zen.settings.SettingVisibility;
 
 public abstract class Setting<T> {
     @Getter @Setter

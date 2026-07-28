@@ -2,11 +2,10 @@ package shit.zen.gui.legacy;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.awt.Color;
-import shit.zen.gui.legacy.ModuleButton;
-import shit.zen.gui.legacy.SettingComponent;
+
 import shit.zen.render.FontStore;
-import shit.zen.settings.Setting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.Setting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.math.MathUtil;
 import shit.zen.utils.render.RenderUtil;
 

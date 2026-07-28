@@ -7,9 +7,8 @@ import java.util.ArrayList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shit.zen.ZenClient;
-import shit.zen.config.Config;
 import shit.zen.exception.ModuleNotFoundException;
-import shit.zen.manager.ModuleManager;
+import shit.zen.modules.ModuleManager;
 import shit.zen.modules.Module;
 
 public class ModulesConfig

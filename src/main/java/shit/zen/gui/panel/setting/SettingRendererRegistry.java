@@ -3,13 +3,8 @@ package shit.zen.gui.panel.setting;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
-import shit.zen.gui.panel.setting.BooleanSettingRenderer;
-import shit.zen.gui.panel.setting.ModeSettingRenderer;
-import shit.zen.gui.panel.setting.MultiSelectSettingRenderer;
-import shit.zen.gui.panel.setting.NumberSettingRenderer;
-import shit.zen.gui.panel.setting.SettingRenderer;
-import shit.zen.settings.Setting;
-import shit.zen.settings.impl.ModeSetting;
+import shit.zen.modules.settings.Setting;
+import shit.zen.modules.settings.impl.ModeSetting;
 
 public class SettingRendererRegistry {
     private static final SettingRendererRegistry INSTANCE;

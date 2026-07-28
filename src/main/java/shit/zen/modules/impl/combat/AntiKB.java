@@ -18,9 +18,9 @@ import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.antikb.AntiKBMode;
 import shit.zen.modules.impl.movement.FireballBlink;
 import shit.zen.modules.impl.movement.HighJump;
-import shit.zen.settings.impl.BooleanSetting;
-import shit.zen.settings.impl.ModeSetting;
-import shit.zen.settings.impl.NumberSetting;
+import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
+import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.rotation.Rotation;
 import shit.zen.event.EventTarget;
 
