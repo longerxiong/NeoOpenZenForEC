@@ -46,6 +46,7 @@ import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.antikb.NoXZMode;
 import shit.zen.modules.impl.player.AntiTNT;
 import shit.zen.modules.impl.player.AntiWeb;
+import shit.zen.modules.impl.player.Blink;
 import shit.zen.modules.impl.player.Helper;
 import shit.zen.modules.impl.player.MidPearl;
 import shit.zen.modules.impl.player.Stuck;
@@ -205,9 +206,6 @@ public class KillAura extends Module {
     public void onSprint(SprintEvent event) {
         if (this.keepSprint.getValue()) {
             ++this.sprintTickCounter;
-            if (this.sprintTickCounter % 2 == 0 && mc.player != null) {
-                mc.player.setSprinting(false);
-            }
         }
     }
 
@@ -392,6 +390,7 @@ public class KillAura extends Module {
     public boolean isValidTarget(Entity entity) {
         if (!ZenClient.isReady()) return false;
         if (entity == mc.player) return false;
+        if (entity instanceof Blink.BlinkGhostPlayer) return false;
         if (entity instanceof LivingEntity livingEntity) {
             AntiBots antiBots = AntiBots.INSTANCE;
             if (antiBots != null && antiBots.isEnabled() && (AntiBots.isBot(entity) || AntiBots.isBedWarsBot(entity))) {
@@ -454,12 +453,6 @@ public class KillAura extends Module {
         if (this.isWebPlacing()) return;
 
         ++this.attackTimes;
-        float currentYaw = mc.player.getYRot();
-        float currentPitch = mc.player.getXRot();
-        if (RotationHandler.targetRotation != null) {
-            mc.player.setYRot(RotationHandler.targetRotation.getYaw());
-            mc.player.setXRot(RotationHandler.targetRotation.getPitch());
-        }
 
         int attackKey = mc.options.keyAttack.getKey().getValue();
         if (this.keepSprint.getValue()) {
@@ -480,9 +473,6 @@ public class KillAura extends Module {
             mc.player.magicCrit(entity);
             mc.player.crit(entity);
         }
-
-        mc.player.setYRot(currentYaw);
-        mc.player.setXRot(currentPitch);
 
         if (this.delayMode.is("1.9")) {
             this.sprintCounter = (int) mc.player.getCurrentItemAttackStrengthDelay();

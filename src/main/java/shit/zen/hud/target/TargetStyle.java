@@ -4,7 +4,6 @@ import java.util.HashMap;
 import net.minecraft.world.entity.LivingEntity;
 import shit.zen.ClientBase;
 import shit.zen.event.impl.Render2DEvent;
-import shit.zen.hud.target.RoundTargetStyle;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 
 public abstract class TargetStyle
@@ -27,9 +26,10 @@ extends ClientBase {
             return;
         }
         registry.put(RoundTargetStyle.class, new RoundTargetStyle());
+        registry.put(OpalTargetStyle.class, new OpalTargetStyle());
     }
 
     public static TargetStyle getByName(String string) {
-        return registry.values().stream().filter(targetStyle -> targetStyle.name.equals(string)).findFirst().orElse(null);
+        return registry.values().stream().filter(targetStyle -> targetStyle.getName().equals(string)).findFirst().orElse(null);
     }
 }

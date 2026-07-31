@@ -27,6 +27,7 @@ import shit.zen.modules.impl.movement.TargetStrafe;
 import shit.zen.modules.impl.player.AntiTNT;
 import shit.zen.modules.impl.player.AntiWeb;
 import shit.zen.modules.impl.player.AutoMLG;
+import shit.zen.modules.impl.world.BedBreaker;
 import shit.zen.modules.impl.player.Helper;
 import shit.zen.modules.impl.player.MidPearl;
 import shit.zen.utils.animation.TickTimer;
@@ -41,31 +42,41 @@ extends ClientBase {
     public static Rotation sentRotation;
     public static Rotation prevSentRotation;
     public static boolean isRotating;
-    private static boolean movementFixEnabled = true;
+    private static MovementFixMode movementFixMode = MovementFixMode.NONE;
+
+    public enum MovementFixMode {
+        SILENT,
+        STRICT,
+        NONE
+    }
 
     public static void setTargetRotation(Rotation rotation) {
         setTargetRotation(rotation, true);
     }
 
     public static void setTargetRotation(Rotation rotation, boolean applyMovementFix) {
+        setTargetRotation(rotation, applyMovementFix ? MovementFixMode.SILENT : MovementFixMode.NONE);
+    }
+
+    public static void setTargetRotation(Rotation rotation, MovementFixMode mode) {
         targetRotation = rotation;
-        movementFixEnabled = applyMovementFix;
+        movementFixMode = mode == null ? MovementFixMode.NONE : mode;
         ClientBase.yaw = rotation.getYaw();
     }
 
     private static boolean shouldApplySilentMoveFix() {
-        return movementFixEnabled && !TargetStrafe.isActive();
+        return movementFixMode == MovementFixMode.SILENT && !TargetStrafe.isActive();
     }
 
     private static boolean shouldUseServerRotationForMovement() {
-        return movementFixEnabled || TargetStrafe.isActive();
+        return movementFixMode == MovementFixMode.STRICT || TargetStrafe.isActive();
     }
 
     @EventTarget
     public void onWorldChange(WorldChangeEvent worldChangeEvent) {
         prevRotation = null;
         targetRotation = null;
-        movementFixEnabled = true;
+        movementFixMode = MovementFixMode.NONE;
     }
 
     @EventTarget(value=0)
@@ -135,9 +146,13 @@ extends ClientBase {
                         killAura.movementFix.getValue());
             } else if (antiKB != null && antiKB.isEnabled() && AntiKB.rotation != null) {
                 RotationHandler.setTargetRotation(AntiKB.rotation);
+            } else if (BedBreaker.INSTANCE != null && BedBreaker.INSTANCE.isEnabled()
+                    && BedBreaker.INSTANCE.targetRotation != null) {
+                RotationHandler.setTargetRotation(
+                        BedBreaker.INSTANCE.targetRotation, BedBreaker.INSTANCE.getMovementFixMode());
             } else {
                 isRotating = false;
-                movementFixEnabled = true;
+                movementFixMode = MovementFixMode.NONE;
             }
         }
     }

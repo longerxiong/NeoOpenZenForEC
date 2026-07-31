@@ -12,7 +12,7 @@ import shit.zen.modules.settings.impl.ModeSetting;
 
 import java.util.List;
 
-public class SpeedModule extends Module {
+public class Speed extends Module {
     private final List<SpeedMode> modes = List.of(
             new SpeedOnGround(),
             new SpeedMotion()
@@ -20,7 +20,7 @@ public class SpeedModule extends Module {
     public final ModeSetting mode;
     private static SpeedMode activeMode;
 
-    public SpeedModule() {
+    public Speed() {
         super("Speed", Category.MOVEMENT);
         mode = new ModeSetting("Mode", getModeNames()).withDefault(modes.get(0).getName());
         activeMode = modes.get(0);

@@ -7,6 +7,7 @@ import lombok.Generated;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -29,11 +30,45 @@ import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BrewingStandBlock;
+import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.SkullBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import shit.zen.ClientBase;
 
 public final class ItemUtil
 extends ClientBase {
+    /**
+     * Plain materials and decorative blocks that have no practical SkyWars use.
+     * Custom server items using the same vanilla base item are deliberately kept.
+     */
+    public static boolean isSkyWarsJunk(ItemStack itemStack) {
+        if (itemStack == null || itemStack.isEmpty()) {
+            return false;
+        }
+        if (itemStack.has(DataComponents.CUSTOM_NAME)
+                || itemStack.has(DataComponents.CUSTOM_DATA)
+                || itemStack.has(DataComponents.LORE)) {
+            return false;
+        }
+
+        Item item = itemStack.getItem();
+        if (item == Items.IRON_INGOT
+                || item == Items.GOLD_INGOT
+                || item == Items.NETHERITE_SCRAP
+                || item == Items.BREWING_STAND
+                || item == Items.FLOWER_POT) {
+            return true;
+        }
+        if (item instanceof BlockItem blockItem) {
+            BlockState state = blockItem.getBlock().defaultBlockState();
+            return state.is(BlockTags.FLOWERS)
+                    || blockItem.getBlock() instanceof BrewingStandBlock
+                    || blockItem.getBlock() instanceof FlowerPotBlock;
+        }
+        return false;
+    }
+
     public static boolean hasServerItem() {
         return ItemUtil.getAllItems().stream().anyMatch(itemStack -> {
             if (!itemStack.isEmpty()) {
@@ -70,6 +105,9 @@ extends ClientBase {
     public static boolean isUsableItem(ItemStack itemStack) {
         if (itemStack.isEmpty()) {
             return true;
+        }
+        if (isSkyWarsJunk(itemStack)) {
+            return false;
         }
         Item item = itemStack.getItem();
         if (item instanceof BlockItem blockItem) {

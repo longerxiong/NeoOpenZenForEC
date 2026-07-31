@@ -5,7 +5,6 @@ import java.util.Optional;
 import lombok.Generated;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.level.ClipContext;
@@ -60,17 +59,11 @@ extends ClientBase {
     }
 
     public static Vec3 getViewVector(float pitch, float yaw) {
-        float yawRad = yaw * ((float)Math.PI / 180);
-        float pitchRad = -pitch * ((float)Math.PI / 180);
-        float cosPitch = Mth.cos(pitchRad);
-        float sinPitch = Mth.sin(pitchRad);
-        float cosYaw = Mth.cos(yawRad);
-        float sinYaw = Mth.sin(yawRad);
-        return new Vec3(sinPitch * cosYaw, -sinYaw, cosPitch * cosYaw);
+        return Vec3.directionFromRotation(pitch, yaw);
     }
 
     public static HitResult rayTrace(double range, float partialTicks, boolean clipFluids, float yaw, float pitch) {
-        Vec3 eyePos = new Vec3(mc.player.getX(), mc.player.getY() + 1.62, mc.player.getZ());
+        Vec3 eyePos = mc.player.getEyePosition(partialTicks);
         Vec3 viewVec = RayTraceUtil.getViewVector(pitch, yaw);
         Vec3 endPos = eyePos.add(viewVec.x * range, viewVec.y * range, viewVec.z * range);
         return mc.player.level().clip(new ClipContext(eyePos, endPos, ClipContext.Block.OUTLINE, clipFluids ? ClipContext.Fluid.ANY : ClipContext.Fluid.NONE, mc.player));

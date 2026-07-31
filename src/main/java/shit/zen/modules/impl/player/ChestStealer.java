@@ -31,7 +31,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.equipment.Equippable;
-import net.minecraft.world.level.block.state.BlockState;
 import shit.zen.event.impl.DisconnectEvent;
 import shit.zen.event.impl.GameTickEvent;
 import shit.zen.event.impl.MotionEvent;
@@ -42,6 +41,7 @@ import shit.zen.modules.impl.movement.Scaffold;
 import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.animation.Timer;
+import shit.zen.utils.game.BlockUtil;
 import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.misc.ReflectionUtil;
 import shit.zen.event.EventTarget;
@@ -566,6 +566,14 @@ extends Module {
     private boolean shouldStealItem(ItemStack itemStack) {
         int count;
         Item item = itemStack.getItem();
+        if (ItemUtil.isSkyWarsJunk(itemStack) && !this.pickTrashSetting.getValue()) {
+            return false;
+        }
+        if (item instanceof BlockItem && item != Items.COBWEB
+                && !BlockUtil.isSafeBridgeBlock(itemStack)
+                && !this.pickTrashSetting.getValue()) {
+            return false;
+        }
         if (item instanceof FishingRodItem && (count = ItemUtil.countItem(Items.FISHING_ROD)) > 0) {
             return false;
         }
@@ -726,6 +734,9 @@ extends Module {
         if (itemStack.isEmpty()) {
             return false;
         }
+        if (ItemUtil.isSkyWarsJunk(itemStack)) {
+            return false;
+        }
         if (ItemUtil.isWeaponItem(itemStack) || ItemUtil.isOtherCheat(itemStack) || ItemUtil.isLegitAxe(itemStack)) {
             return true;
         }
@@ -786,7 +797,7 @@ extends Module {
             return false;
         }
         if (itemStack.getItem() instanceof BlockItem) {
-            return isSolidBlockItem(itemStack)
+            return BlockUtil.isSafeBridgeBlock(itemStack)
                     && ItemUtil.isUsableItem(itemStack)
                     && ItemUtil.countBlocks() + itemStack.getCount() <= InventoryManager.getMaxBlockSize();
         }
@@ -803,11 +814,7 @@ extends Module {
     }
 
     public static boolean isSolidBlockItem(ItemStack stack) {
-        if (!(stack.getItem() instanceof BlockItem blockItem)) {
-            return false;
-        }
-        BlockState state = blockItem.getBlock().defaultBlockState();
-        return state.isSolid();
+        return BlockUtil.isSafeBridgeBlock(stack);
     }
 
     static {

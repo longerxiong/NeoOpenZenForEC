@@ -3,9 +3,11 @@ package shit.zen.asm;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.objectweb.asm.Type;
 
@@ -16,7 +18,7 @@ import org.objectweb.asm.Type;
  */
 public final class MethodWrapper {
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-    private static final Map<String, MethodHandle> CACHE = new ConcurrentHashMap<>();
+    private static final Map<MethodKey, MethodHandle> CACHE = new ConcurrentHashMap<>();
 
     private final MethodHandle handle;
     private final List<Object> params = new LinkedList<>();
@@ -26,29 +28,60 @@ public final class MethodWrapper {
     }
 
     public static MethodWrapper getInstance(String classOwner, String methodName, String methodDesc) throws Exception {
-        String key = classOwner + "/" + methodName + methodDesc;
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (loader == null) {
+            loader = MethodWrapper.class.getClassLoader();
+        }
+        MethodKey key = new MethodKey(loader, classOwner, methodName, methodDesc);
         MethodHandle cached = CACHE.get(key);
         if (cached != null) {
             return new MethodWrapper(cached);
         }
-        Class<?> clazz = Class.forName(classOwner.replace('/', '.'), false,
-                Thread.currentThread().getContextClassLoader());
+        Class<?> clazz = Class.forName(classOwner.replace('/', '.'), false, loader);
         MethodHandle handle = lookup(clazz, methodName, methodDesc);
         if (handle == null) {
             throw new NoSuchMethodException("Method " + methodName + methodDesc + " not found on " + classOwner);
         }
-        CACHE.put(key, handle);
-        return new MethodWrapper(handle);
+        MethodHandle existing = CACHE.putIfAbsent(key, handle);
+        return new MethodWrapper(existing != null ? existing : handle);
     }
 
     private static MethodHandle lookup(Class<?> clazz, String methodName, String methodDesc) throws Exception {
+        Method method = findMethod(clazz, methodName, methodDesc, new HashSet<>());
+        if (method == null) {
+            return null;
+        }
+        if (!method.trySetAccessible()) {
+            return MethodHandles.publicLookup().unreflect(method);
+        }
+        return LOOKUP.unreflect(method);
+    }
+
+    private static Method findMethod(Class<?> clazz, String methodName, String methodDesc,
+                                     Set<Class<?>> visited) {
+        if (clazz == null || !visited.add(clazz)) {
+            return null;
+        }
         for (Method method : clazz.getDeclaredMethods()) {
             if (method.getName().equals(methodName) && Type.getMethodDescriptor(method).equals(methodDesc)) {
-                method.setAccessible(true);
-                return LOOKUP.unreflect(method);
+                return method;
+            }
+        }
+
+        Method inherited = findMethod(clazz.getSuperclass(), methodName, methodDesc, visited);
+        if (inherited != null) {
+            return inherited;
+        }
+        for (Class<?> interfaceClass : clazz.getInterfaces()) {
+            inherited = findMethod(interfaceClass, methodName, methodDesc, visited);
+            if (inherited != null) {
+                return inherited;
             }
         }
         return null;
+    }
+
+    private record MethodKey(ClassLoader loader, String owner, String name, String descriptor) {
     }
 
     public List<Object> getMethodParams() {

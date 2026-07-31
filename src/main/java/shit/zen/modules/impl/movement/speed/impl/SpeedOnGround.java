@@ -2,7 +2,7 @@ package shit.zen.modules.impl.movement.speed.impl;
 
 import shit.zen.event.EventTarget;
 import shit.zen.event.impl.MotionEvent;
-import shit.zen.modules.impl.movement.SpeedModule;
+import shit.zen.modules.impl.movement.Speed;
 import shit.zen.modules.impl.movement.speed.SpeedMode;
 import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.game.MovementUtil;
@@ -12,7 +12,7 @@ public class SpeedOnGround extends SpeedMode {
         super("OnGround");
     }
 
-    private final NumberSetting speed = new NumberSetting("Speed", 1, 1, 5, 0.1f, ()-> SpeedModule.is(this));
+    private final NumberSetting speed = new NumberSetting("Speed", 1, 1, 5, 0.1f, ()-> Speed.is(this));
 
     @EventTarget
     public void onMotion(MotionEvent event) {

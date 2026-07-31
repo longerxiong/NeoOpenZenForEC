@@ -21,6 +21,7 @@ import shit.zen.modules.impl.combat.CrystalAura;
 import shit.zen.modules.impl.combat.KillAura;
 import shit.zen.modules.impl.exploit.Disabler;
 import shit.zen.modules.impl.exploit.FastPlace;
+import shit.zen.modules.impl.exploit.RemoteStore;
 import shit.zen.modules.impl.misc.AimAssist;
 import shit.zen.modules.impl.misc.AutoClicker;
 import shit.zen.modules.impl.misc.AutoRod;
@@ -43,12 +44,7 @@ import shit.zen.modules.impl.render.OldHitting;
 import shit.zen.modules.impl.render.Projectiles;
 import shit.zen.modules.impl.render.Watermark;
 import shit.zen.modules.impl.render.XRay;
-import shit.zen.modules.impl.world.AntiStaff;
-import shit.zen.modules.impl.world.AutoPlay;
-import shit.zen.modules.impl.world.AutoTools;
-import shit.zen.modules.impl.world.Debugger;
-import shit.zen.modules.impl.world.Teams;
-import shit.zen.modules.impl.world.WebUI;
+import shit.zen.modules.impl.world.*;
 import shit.zen.event.EventTarget;
 
 public class ModuleManager extends ClientBase {
@@ -72,6 +68,7 @@ public class ModuleManager extends ClientBase {
 
         this.register(new Disabler());
         this.register(new FastPlace());
+        this.register(new RemoteStore());
 
         this.register(new AimAssist());
         this.register(new AutoClicker());
@@ -80,6 +77,7 @@ public class ModuleManager extends ClientBase {
 
         this.register(new CollisionSpeed());
         this.register(new NoSlow());
+        this.register(new Blink());
         this.register(new FastWeb());
         this.register(new FireballBlink());
         this.register(new Fly());
@@ -89,14 +87,17 @@ public class ModuleManager extends ClientBase {
         this.register(new NoPush());
         this.register(new Scaffold());
         this.register(new Sprint());
+        this.register(new Step());
+        this.register(new Strafe());
         this.register(new TargetStrafe());
-        this.register(new SpeedModule());
+        this.register(new Speed());
         this.register(new KeepSprint());
 
         this.register(new AntiTNT());
         this.register(new AntiVoid());
         this.register(new AntiWeb());
         this.register(new AutoMLG());
+        this.register(new BedBreaker());
 //        this.register(new AutoWebPlace());
         this.register(new ChestStealer());
         this.register(new GhostHand());

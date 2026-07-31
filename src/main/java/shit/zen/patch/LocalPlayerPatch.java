@@ -4,6 +4,8 @@ import asm.patchify.annotation.At;
 import asm.patchify.annotation.Inject;
 import asm.patchify.annotation.Patch;
 import asm.patchify.annotation.Transform;
+import asm.patchify.annotation.WrapInvoke;
+import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
@@ -21,11 +23,40 @@ import org.objectweb.asm.tree.VarInsnNode;
 import shit.zen.ZenClient;
 import shit.zen.event.impl.*;
 import shit.zen.modules.impl.movement.Sprint;
+import shit.zen.asm.Invocation;
 import shit.zen.utils.game.MovementUtil;
 import shit.zen.utils.misc.ReflectionUtil;
 
 @Patch(LocalPlayer.class)
 public class LocalPlayerPatch {
+    @WrapInvoke(
+            method = "canStartSprinting",
+            desc = "()Z",
+            target = "net/minecraft/client/player/ClientInput/hasForwardImpulse",
+            targetDesc = "()Z"
+    )
+    public static boolean onCanStartSprintingInput(LocalPlayer player,
+                                                    Invocation<ClientInput, Boolean> original) throws Exception {
+        if (Sprint.isFullEnabled()) {
+            return player.input.getMoveVector().lengthSquared() > 0.0F;
+        }
+        return original.call();
+    }
+
+    @WrapInvoke(
+            method = "shouldStopRunSprinting",
+            desc = "()Z",
+            target = "net/minecraft/client/player/ClientInput/hasForwardImpulse",
+            targetDesc = "()Z"
+    )
+    public static boolean onShouldStopSprintingInput(LocalPlayer player,
+                                                      Invocation<ClientInput, Boolean> original) throws Exception {
+        if (Sprint.isFullEnabled()) {
+            return player.input.getMoveVector().lengthSquared() > 0.0F;
+        }
+        return original.call();
+    }
+
     public static MotionEvent onMotion(double x, double y, double z, float yaw, float pitch, boolean onGround, boolean isPost) {
         // MotionEvent's phase names are historically inverted: modules treat post as the
         // mutable, before-send phase and pre as the notification after sendPosition returns.
@@ -152,7 +183,7 @@ public class LocalPlayerPatch {
     @Inject(method = "move", desc = "(Lnet/minecraft/world/entity/MoverType;Lnet/minecraft/world/phys/Vec3;)V", at = @At(value = At.Type.HEAD))
     public static void onMove(LocalPlayer player, MoverType type, Vec3 movement, CallbackInfo ci) {
         if (handlingMoveEvent) return;
-        MoveEvent event = new MoveEvent(movement.x, movement.y, movement.z);
+        MoveEvent event = new MoveEvent(type, movement.x, movement.y, movement.z);
         if (ZenClient.isReady()) {
             ZenClient.getInstance().getEventBus().call(event);
         }

@@ -664,6 +664,7 @@ public class InventoryManager extends Module {
 
     public boolean isUsefulItem(ItemStack stack) {
         if (stack.isEmpty()) return false;
+        if (ItemUtil.isSkyWarsJunk(stack)) return false;
         if (ItemUtil.isWeaponItem(stack)) return true;
         if (stack.getDisplayName().getString().contains("点击使用")) return true;
         if (stack.getItem() == Items.COBWEB) return true;
@@ -688,7 +689,9 @@ public class InventoryManager extends Module {
         if (stack.getItem() == Items.WATER_BUCKET && ItemUtil.countItem(Items.WATER_BUCKET) > getMaxWaterBuckets()) return false;
         if (stack.getItem() == Items.LAVA_BUCKET && ItemUtil.countItem(Items.LAVA_BUCKET)   > getMaxLavaBuckets())  return false;
         if (stack.getItem() instanceof FishingRodItem && ItemUtil.countItem(Items.FISHING_ROD) > 1) return false;
-        if (stack.getItem() instanceof BlockItem blockItem && !blockItem.getBlock().defaultBlockState().isSolid()) return false;
+        if (stack.getItem() instanceof BlockItem && stack.getItem() != Items.COBWEB) {
+            return BlockUtil.isSafeBridgeBlock(stack);
+        }
         return ItemUtil.isUsableItem(stack);
     }
 }

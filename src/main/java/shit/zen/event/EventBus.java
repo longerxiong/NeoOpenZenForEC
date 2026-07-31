@@ -7,14 +7,52 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public final class EventBus {
     private static final Logger LOGGER = LogManager.getLogger(EventBus.class);
+    private static final long FAILURE_REPORT_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(30L);
     private final Map<Class<? extends EventMarker>, List<ListenerEntry>> listeners = new HashMap<>();
 
-    public record ListenerEntry(Object listener, Method method, byte priority) {
+    public static final class ListenerEntry {
+        private final Object listener;
+        private final Method method;
+        private final byte priority;
+        private volatile FailureState failureState;
+
+        private ListenerEntry(Object listener, Method method, byte priority) {
+            this.listener = listener;
+            this.method = method;
+            this.priority = priority;
+        }
+
+        public Object listener() {
+            return listener;
+        }
+
+        public Method method() {
+            return method;
+        }
+
+        public byte priority() {
+            return priority;
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) return true;
+            if (!(object instanceof ListenerEntry other)) return false;
+            return listener.equals(other.listener) && method.equals(other.method) && priority == other.priority;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = listener.hashCode();
+            result = 31 * result + method.hashCode();
+            return 31 * result + priority;
+        }
     }
 
     public void register(Object object) {
@@ -105,17 +143,70 @@ public final class EventBus {
     }
 
     private void dispatchToListener(ListenerEntry entry, EventMarker eventMarker) {
+        FailureState failureState = entry.failureState;
+        if (failureState != null && !failureState.tryBeginRetry(System.nanoTime())) {
+            return;
+        }
         try {
             entry.method().invoke(entry.listener(), eventMarker);
+            if (failureState != null) {
+                entry.failureState = null;
+            }
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
+            reportListenerFailure(entry, eventMarker, cause, failureState != null);
+        } catch (Exception e) {
+            reportListenerFailure(entry, eventMarker, e, failureState != null);
+        }
+    }
+
+    private void reportListenerFailure(ListenerEntry entry, EventMarker eventMarker, Throwable cause,
+                                       boolean retryFailure) {
+        long now = System.nanoTime();
+        if (!retryFailure) {
+            synchronized (entry) {
+                if (entry.failureState == null) {
+                    entry.failureState = new FailureState(now + FAILURE_REPORT_INTERVAL_NANOS);
+                } else {
+                    entry.failureState.finishFailedRetry(now + FAILURE_REPORT_INTERVAL_NANOS);
+                    retryFailure = true;
+                }
+            }
+        } else {
+            entry.failureState.finishFailedRetry(now + FAILURE_REPORT_INTERVAL_NANOS);
+        }
+
+        if (!retryFailure) {
             LOGGER.error("Listener {}#{} failed while handling {}",
                     entry.listener().getClass().getName(), entry.method().getName(),
                     eventMarker.getClass().getName(), cause);
-        } catch (Exception e) {
-            LOGGER.error("Could not invoke listener {}#{} for {}",
-                    entry.listener().getClass().getName(), entry.method().getName(),
-                    eventMarker.getClass().getName(), e);
+            return;
+        }
+        LOGGER.warn("Listener {}#{} still fails while handling {}; muted for another 30 seconds. "
+                        + "Latest cause: {}: {}",
+                entry.listener().getClass().getName(), entry.method().getName(),
+                eventMarker.getClass().getName(), cause.getClass().getName(), cause.getMessage());
+    }
+
+    private static final class FailureState {
+        private long retryAfterNanos;
+        private boolean retryInProgress;
+
+        private FailureState(long retryAfterNanos) {
+            this.retryAfterNanos = retryAfterNanos;
+        }
+
+        private synchronized boolean tryBeginRetry(long now) {
+            if (retryInProgress || now < retryAfterNanos) {
+                return false;
+            }
+            retryInProgress = true;
+            return true;
+        }
+
+        private synchronized void finishFailedRetry(long nextRetryNanos) {
+            retryAfterNanos = nextRetryNanos;
+            retryInProgress = false;
         }
     }
 }

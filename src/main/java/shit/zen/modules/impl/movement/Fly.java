@@ -7,9 +7,14 @@ import shit.zen.event.EventTarget;
 import shit.zen.event.impl.GameTickEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
+import shit.zen.modules.settings.impl.NumberSetting;
 
 public class Fly extends Module {
     public static Fly INSTANCE;
+    public final NumberSetting horizontalSpeed =
+            new NumberSetting("Horizontal Speed", 0.44, 0.0, 5.0, 0.01);
+    public final NumberSetting verticalSpeed =
+            new NumberSetting("Vertical Speed", 0.44, 0.0, 5.0, 0.01);
 
     public Fly() {
         super("Fly", Category.MOVEMENT);
@@ -54,7 +59,7 @@ public class Fly extends Module {
             }
 
             // 3. 计算水平速度向量
-            double speed = 0.44; // 可配置
+            double speed = this.horizontalSpeed.getValue().doubleValue();
             Vec3 horizontalVelocity = new Vec3(0, 0, 0);
             if (moveForward != 0 || moveStrafe != 0) {
                 // 方向向量 = 前方向 * moveForward + 右方向 * moveStrafe
@@ -63,7 +68,7 @@ public class Fly extends Module {
             }
 
             // 4. 计算垂直速度
-            double verticalSpeed = 0.44; // 可配置
+            double verticalSpeed = this.verticalSpeed.getValue().doubleValue();
             double yMotion;
             if (jump) {
                 yMotion = verticalSpeed;

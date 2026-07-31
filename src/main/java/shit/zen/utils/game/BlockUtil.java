@@ -5,18 +5,27 @@ import lombok.Generated;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.AirBlock;
+import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BushBlock;
+import net.minecraft.world.level.block.CartographyTableBlock;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CraftingTableBlock;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.FletchingTableBlock;
 import net.minecraft.world.level.block.FlowerBlock;
 import net.minecraft.world.level.block.FungusBlock;
 import net.minecraft.world.level.block.FurnaceBlock;
+import net.minecraft.world.level.block.GrindstoneBlock;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.block.LoomBlock;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SmithingTableBlock;
+import net.minecraft.world.level.block.StonecutterBlock;
 import net.minecraft.world.level.block.TntBlock;
 import net.minecraft.world.level.block.WebBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -93,40 +102,43 @@ extends ClientBase {
     }
 
     public static boolean isPlaceable(ItemStack itemStack) {
-        if (itemStack != null && itemStack.getItem() instanceof BlockItem && itemStack.getCount() > 1) {
-            if (!ItemUtil.isUsable(itemStack)) {
-                return false;
-            }
-            String displayName = itemStack.getDisplayName().getString();
-            if (displayName.contains("Click") || displayName.contains("点击")) {
-                return false;
-            }
-            if (itemStack.getItem() instanceof BlockItem blockItem && !blockItem.getBlock().defaultBlockState().isSolid()) {
-                return false;
-            }
-            Block block = ((BlockItem)itemStack.getItem()).getBlock();
-            if (block instanceof FlowerBlock) {
-                return false;
-            }
-            if (block instanceof BushBlock) {
-                return false;
-            }
-            if (block instanceof FungusBlock) {
-                return false;
-            }
-            if (block instanceof CropBlock) {
-                return false;
-            }
-            if (block instanceof SlabBlock) {
-                return false;
-            }
-            // Cobwebs are tactical utility items (AutoWebPlace ammo), never bridging blocks.
-            if (block instanceof WebBlock) {
-                return false;
-            }
-            return !blacklist.contains(block);
+        return itemStack != null && itemStack.getCount() > 1 && isSafeBridgeBlock(itemStack);
+    }
+
+    public static boolean isSafeBridgeBlock(ItemStack itemStack) {
+        if (itemStack == null || itemStack.isEmpty() || !(itemStack.getItem() instanceof BlockItem blockItem)) {
+            return false;
         }
-        return false;
+        if (!ItemUtil.isUsable(itemStack)) {
+            return false;
+        }
+        String displayName = itemStack.getDisplayName().getString();
+        if (displayName.contains("Click") || displayName.contains("点击")) {
+            return false;
+        }
+
+        Block block = blockItem.getBlock();
+        if (blacklist.contains(block)
+                || block instanceof BaseEntityBlock
+                || block instanceof FallingBlock
+                || block instanceof TntBlock
+                || block instanceof CraftingTableBlock
+                || block instanceof CartographyTableBlock
+                || block instanceof FletchingTableBlock
+                || block instanceof SmithingTableBlock
+                || block instanceof StonecutterBlock
+                || block instanceof LoomBlock
+                || block instanceof GrindstoneBlock
+                || block instanceof FlowerBlock
+                || block instanceof BushBlock
+                || block instanceof FungusBlock
+                || block instanceof CropBlock
+                || block instanceof SlabBlock
+                || block instanceof WebBlock) {
+            return false;
+        }
+        return block.defaultBlockState().isCollisionShapeFullBlock(
+                EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 
     @Generated
