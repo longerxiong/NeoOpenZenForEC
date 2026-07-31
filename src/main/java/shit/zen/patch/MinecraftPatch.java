@@ -24,6 +24,7 @@ import shit.zen.event.impl.TickEvent;
 import shit.zen.modules.impl.movement.NoSlow;
 import shit.zen.modules.impl.render.ESP;
 import shit.zen.render.Renderer;
+import shit.zen.utils.misc.MemoryPressureGuard;
 
 @Patch(Minecraft.class)
 public class MinecraftPatch {
@@ -36,6 +37,7 @@ public class MinecraftPatch {
 
     @Inject(method = "tick", desc = "()V")
     public static void onTick(Minecraft minecraft, CallbackInfo callbackInfo) throws Throwable {
+        MemoryPressureGuard.configureOptionalParticleLimits();
         if (!initialized) {
             synchronized (MinecraftPatch.class) {
                 if (!initialized) {
@@ -70,6 +72,17 @@ public class MinecraftPatch {
         if (ZenClient.isReady()) {
             ZenClient.getInstance().getEventBus().call(new DisconnectEvent());
         }
+    }
+
+    @Inject(
+            method = "setLevel",
+            desc = "(Lnet/minecraft/client/multiplayer/ClientLevel;Lnet/minecraft/client/gui/screens/ReceivingLevelScreen$Reason;)V",
+            at = @At(At.Type.TAIL)
+    )
+    public static void onSetLevelPost(Minecraft minecraft, ClientLevel level,
+                                      ReceivingLevelScreen.Reason reason,
+                                      CallbackInfo callbackInfo) {
+        MemoryPressureGuard.afterLevelChange(minecraft);
     }
 
     @Inject(

@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.Minecraft;
 import net.neoforged.fml.common.Mod;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import shit.zen.event.EventBus;
 import shit.zen.event.EventTarget;
 import shit.zen.event.impl.TickEvent;
@@ -43,8 +45,11 @@ import shit.zen.patch.LocalPlayerPatch;
 import shit.zen.patch.MinecraftPatch;
 import shit.zen.patch.ModListScreenPatch;
 import shit.zen.patch.PacketUtilsPatch;
+import shit.zen.patch.ParticleEnginePatch;
 import shit.zen.patch.PlayerPatch;
 import shit.zen.patch.PlayerTabOverlayPatch;
+import shit.zen.patch.SodiumChunkBuilderPatch;
+import shit.zen.patch.ViaBedrockSodiumPushPatch;
 import shit.zen.asm.Bootstrap;
 import shit.zen.utils.render.IrisCompatibility;
 import shit.zen.utils.rotation.RotationHandler;
@@ -190,6 +195,10 @@ public class ZenClient extends ClientBase {
     }
 
     public static void registerPatches() {
+        // These mods log per-model or per-particle details on cosmetic-heavy servers.
+        Configurator.setLevel("viabedrockutility", Level.WARN);
+        Configurator.setLevel("bedrock-loader", Level.WARN);
+        Configurator.setLevel("beparticle", Level.WARN);
         IrisCompatibility.initialize();
         PatchRegistry.register(MinecraftPatch.class);
         PatchRegistry.register(LocalPlayerPatch.class);
@@ -199,6 +208,7 @@ public class ZenClient extends ClientBase {
         PatchRegistry.register(ClientLevelPatch.class);
         PatchRegistry.register(ConnectionPatch.class);
         PatchRegistry.register(PacketUtilsPatch.class);
+        PatchRegistry.register(ParticleEnginePatch.class);
         PatchRegistry.register(KeyboardHandlerPatch.class);
         PatchRegistry.register(KeyboardInputPatch.class);
         PatchRegistry.register(ChatScreenPatch.class);
@@ -221,6 +231,8 @@ public class ZenClient extends ClientBase {
         // load the class before our transformer is installed, preventing
         // the patch from ever being applied.
         PatchRegistry.register(BlockOcclusionCachePatch.class);
+        PatchRegistry.register(SodiumChunkBuilderPatch.class);
+        PatchRegistry.register(ViaBedrockSodiumPushPatch.class);
     }
 
     public static Minecraft getMcInstance() {
