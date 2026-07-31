@@ -87,9 +87,9 @@ public class KillAura extends Module {
     public final BooleanSetting autoBlock   = new BooleanSetting("AutoBlock", true);
     public final ModeSetting autoBlockMode = new ModeSetting("AutoBlock Mode", "Fake", "Gapple").withDefault("Fake");
 //    public final BooleanSetting test            = new BooleanSetting("Test", false);
-    public final NumberSetting blockRange = new NumberSetting("Block Range", 4.0, 1.0, 6.0, 0.1, autoBlock::getValue);
-    public final NumberSetting aimRange    = new NumberSetting("Aim Range", 4.0, 1.0, 6.0, 0.1);
-    public final NumberSetting attackRange = new NumberSetting("Attack Range", 3.0, 1.0, 6.0, 0.1);
+    public final NumberSetting blockRange = new NumberSetting("Block Range", 4.0, 1.0, 20.0, 0.1, autoBlock::getValue);
+    public final NumberSetting aimRange    = new NumberSetting("Aim Range", 4.0, 1.0, 20.0, 0.1);
+    public final NumberSetting attackRange = new NumberSetting("Attack Range", 3.0, 1.0, 20.0, 0.1);
     public final NumberSetting maxAps      = new NumberSetting("Max APS", 12.0, 1.0, 20.0, 1.0);
     public final NumberSetting minAps      = new NumberSetting("Min APS", 9.0, 1.0, 20.0, 1.0);
     public final NumberSetting switchSize  = new NumberSetting("Switch Size", 1.0, 1.0, 5.0, 1.0,
@@ -316,7 +316,7 @@ public class KillAura extends Module {
             this.attacks = 0.0f;
             return;
         }
-        if (mc.player.getUseItem().isEmpty() || (autoBlock.getValue() && autoBlockMode.is("Gapple"))
+        if (mc.player.getUseItem().isEmpty() || autoBlock.getValue()
                 && mc.screen == null
                 && (this.ignoreSkipTicks.getValue() || ClientBase.delayPackets.isEmpty())) {
             while (this.attacks >= 1.0f) {
