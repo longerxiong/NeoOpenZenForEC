@@ -6,7 +6,7 @@ import shit.zen.event.impl.GameTickEvent;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.movement.speed.SpeedMode;
-import shit.zen.modules.impl.movement.speed.impl.SpeedMotion;
+import shit.zen.modules.impl.movement.speed.impl.SpeedModify;
 import shit.zen.modules.impl.movement.speed.impl.SpeedOnGround;
 import shit.zen.modules.settings.impl.ModeSetting;
 
@@ -15,7 +15,7 @@ import java.util.List;
 public class Speed extends Module {
     private final List<SpeedMode> modes = List.of(
             new SpeedOnGround(),
-            new SpeedMotion()
+            new SpeedModify()
     );
     public final ModeSetting mode;
     private static SpeedMode activeMode;

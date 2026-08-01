@@ -28,14 +28,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.RandomUtils;
 import shit.zen.ClientBase;
-import shit.zen.event.impl.JumpEvent;
-import shit.zen.event.impl.MotionEvent;
-import shit.zen.event.impl.PacketEvent;
-import shit.zen.event.impl.PreMotionEvent;
-import shit.zen.event.impl.Render2DEvent;
-import shit.zen.event.impl.RenderEvent;
-import shit.zen.event.impl.TickEvent;
-import shit.zen.event.impl.UpdateHeldItemEvent;
+import shit.zen.event.impl.*;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.settings.impl.BooleanSetting;
@@ -66,6 +59,7 @@ public class Scaffold extends Module {
     public final BooleanSetting renderItemSpoof = new BooleanSetting("Render Item Spoof", true);
     public final NumberSetting rotationTick = new NumberSetting("Rotation Tick", 3, 1, 6, 1);
     public final BooleanSetting clutch = new BooleanSetting("Clutch", true);
+    public final BooleanSetting tower = new BooleanSetting("Tower", false);
 
     public Rotation correctRotation = new Rotation();
     public Rotation rots = new Rotation();
@@ -136,6 +130,19 @@ public class Scaffold extends Module {
             batch.remove(packet);
             PacketUtil.sendQueued((Packet<ServerGamePacketListener>) packet);
         });
+    }
+
+    @EventTarget
+    public void onTickTower(TickEvent event) {
+        if (mc.player == null || !tower.getValue()) return;
+        boolean jumpHeld = InputConstants.isKeyDown(mc.getWindow().getWindow(), mc.options.keyJump.getKey().getValue());
+        if (jumpHeld) {
+            mc.player.setDeltaMovement(
+                    mc.player.getDeltaMovement().x,
+                    0.42,
+                    mc.player.getDeltaMovement().z
+            );
+        }
     }
 
     @EventTarget

@@ -9,11 +9,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.Entity;
@@ -37,6 +35,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import shit.zen.ClientBase;
 import shit.zen.ZenClient;
 import shit.zen.event.impl.PreMotionEvent;
+import shit.zen.event.impl.Render2DEvent;
 import shit.zen.event.impl.RenderEvent;
 import shit.zen.event.impl.SprintEvent;
 import shit.zen.event.impl.TickEvent;
@@ -59,7 +58,6 @@ import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.game.RotationUtil;
 import shit.zen.utils.math.MathUtil;
 import shit.zen.utils.misc.ChatUtil;
-import shit.zen.utils.misc.PacketUtil;
 import shit.zen.utils.render.RenderUtil;
 import shit.zen.utils.rotation.Rotation;
 import shit.zen.utils.rotation.RotationHandler;
@@ -108,6 +106,7 @@ public class KillAura extends Module {
     private int targetIndex;
     public int sprintTickCounter;
     private int sprintCounter;
+    private boolean pendingStopBlock;
     public Rotation rotation;
 
     public KillAura() {
@@ -124,6 +123,7 @@ public class KillAura extends Module {
         aimingTarget = null;
         targetList.clear();
         blocking = false;
+        this.pendingStopBlock = false;
         super.onEnable();
     }
 
@@ -136,6 +136,7 @@ public class KillAura extends Module {
         this.sprintTickCounter = 0;
         this.sprintCounter = 0;
         this.attackTimes = 0;
+        this.pendingStopBlock = false;
         super.onDisable();
     }
 
@@ -202,6 +203,39 @@ public class KillAura extends Module {
         }
     }
 
+    private static final int GAPPLE_BAR_COLOR = new Color(238, 204, 51, 255).getRGB();
+    private static final int GAPPLE_BG_COLOR = new Color(0, 0, 0, 128).getRGB();
+
+    @EventTarget
+    public void onRender2D(Render2DEvent event) {
+        if (mc.player == null) return;
+        // Only show progress bar when Gapple autoblock is active and player is eating
+        if (!autoBlock.getValue() || !autoBlockMode.is("Gapple") || !blocking) return;
+        int remainingTicks = mc.player.getUseItemRemainingTicks();
+        if (remainingTicks <= 0) return;
+
+        float maxTicks = 32.0f;
+        float progress = Mth.clamp(1.0f - (remainingTicks / maxTicks), 0.0f, 1.0f);
+
+        float width = 100.0f;
+        float height = 5.0f;
+        float x = (mc.getWindow().getGuiScaledWidth() - width) / 2.0f;
+        float y = mc.getWindow().getGuiScaledHeight() / 3.0f;
+        float fillWidth = width * progress;
+
+        // "Eating Gapple..." text
+        String label = "Eating Gapple...";
+        int labelX = (int) (mc.getWindow().getGuiScaledWidth() / 2.0f - mc.font.width(label) / 2.0f);
+        int labelY = (int) (y - mc.font.lineHeight - 2);
+        event.guiGraphics().drawString(mc.font, label, labelX, labelY, 0xFFFFFFFF);
+
+        // Progress bar
+        RenderUtil.drawRoundedRect(event.poseStack(), x, y, width, height, 2.0f, GAPPLE_BG_COLOR);
+        if (fillWidth > 0.0f) {
+            RenderUtil.drawRoundedRect(event.poseStack(), x, y, fillWidth, height, 2.0f, GAPPLE_BAR_COLOR);
+        }
+    }
+
     @EventTarget
     public void onSprint(SprintEvent event) {
         if (this.keepSprint.getValue()) {
@@ -219,9 +253,19 @@ public class KillAura extends Module {
         if (autoBlock.getValue() && mc.player != null) {
             Entity blockTarget = aimingTarget != null ? aimingTarget : target;
             if (blockTarget != null && mc.player.distanceTo(blockTarget) <= getBlockRange()) {
-                doBlock();
+                if (!this.pendingStopBlock) {
+                    doBlock();
+                }
             } else {
                 stopBlock();
+            }
+            // Gapple mode: wait until apple is finished eating before releasing useKey
+            if (this.pendingStopBlock) {
+                if (mc.player.getUseItemRemainingTicks() <= 0) {
+                    mc.options.keyUse.setDown(false);
+                    this.pendingStopBlock = false;
+                    blocking = false;
+                }
             }
         }
 
@@ -316,9 +360,9 @@ public class KillAura extends Module {
             this.attacks = 0.0f;
             return;
         }
-        if (mc.player.getUseItem().isEmpty() || autoBlock.getValue()
+        if (/*mc.player.getUseItem().isEmpty() || autoBlock.getValue()
                 && mc.screen == null
-                && (this.ignoreSkipTicks.getValue() || ClientBase.delayPackets.isEmpty())) {
+                &&*/ (this.ignoreSkipTicks.getValue() || ClientBase.delayPackets.isEmpty())) {
             while (this.attacks >= 1.0f) {
                 this.doAttack();
                 this.attacks -= 1.0f;
@@ -486,7 +530,10 @@ public class KillAura extends Module {
         switch(autoBlockMode.getValue()){
             case "Fake" ->{}
             case "Gapple" ->{
-                mc.options.keyUse.setDown(true);
+                mc.player.getOffhandItem();
+                if(mc.player.getOffhandItem().getItem() == Items.GOLDEN_APPLE) {
+                    mc.options.keyUse.setDown(true);
+                }
             }
         }
         blocking = true;
@@ -497,7 +544,17 @@ public class KillAura extends Module {
         switch(autoBlockMode.getValue()){
             case "Fake" ->{}
             case "Gapple" ->{
+                int remainingTicks = mc.player.getUseItemRemainingTicks();
+                // If currently eating, defer unblock until finished
+                if (remainingTicks > 0) {
+                    this.pendingStopBlock = true;
+                    return;
+                }
+                // Not eating, release immediately
                 mc.options.keyUse.setDown(false);
+                this.pendingStopBlock = false;
+                blocking = false;
+                return;
             }
         }
         blocking = false;
