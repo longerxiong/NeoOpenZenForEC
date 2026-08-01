@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
+import lombok.Setter;
 import shit.zen.modules.settings.Setting;
 import shit.zen.modules.settings.SettingVisibility;
 

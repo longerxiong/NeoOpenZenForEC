@@ -8,6 +8,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
 import org.apache.commons.lang3.tuple.Pair;
 import shit.zen.ClientBase;
+import shit.zen.ZenClient;
 import shit.zen.event.impl.PacketEvent;
 import shit.zen.event.impl.TickEvent;
 import shit.zen.event.EventTarget;
@@ -23,6 +24,7 @@ public class LagManager {
 
     public LagManager() {
         INSTANCE = this;
+        ZenClient.getInstance().getEventBus().register(this);
     }
 
     public void setBlink(boolean enable) {

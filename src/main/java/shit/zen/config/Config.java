@@ -5,7 +5,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import lombok.Getter;
-import shit.zen.manager.ConfigManager;
 
 public abstract class Config {
     @Getter
@@ -13,9 +12,9 @@ public abstract class Config {
     @Getter
     private final File file;
 
-    public Config(String string) {
-        this.name = string;
-        this.file = new File(ConfigManager.CONFIG_DIR, string);
+    public Config(String name) {
+        this.name = name;
+        this.file = new File(ConfigManager.CONFIG_DIR, name + ".json");
     }
 
     public abstract void read(BufferedReader var1) throws IOException;

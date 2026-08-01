@@ -3,7 +3,6 @@ package shit.zen.utils.render;
 import com.mojang.blaze3d.platform.NativeImage;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.Generated;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import shit.zen.manager.ConfigManager;
+import shit.zen.config.ConfigManager;
 
 public final class TextureUtil {
     private static final Map<String, DynamicTexture> textureCache = new HashMap<>();

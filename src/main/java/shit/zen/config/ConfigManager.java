@@ -1,4 +1,4 @@
-package shit.zen.manager;
+package shit.zen.config;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -13,9 +13,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shit.zen.ZenClient;
-import shit.zen.config.Config;
-import shit.zen.config.ModulesConfig;
-import shit.zen.config.ValuesConfig;
+import shit.zen.config.impl.ModulesConfig;
 
 public class ConfigManager {
     public static final Logger LOGGER = LogManager.getLogger("ConfigManager");
@@ -28,10 +26,9 @@ public class ConfigManager {
             LOGGER.info("Created config directory");
         }
         this.configs.add(new ModulesConfig());
-        this.configs.add(new ValuesConfig());
     }
 
-    public void loadAll() {
+    public void load() {
         for (Config config : this.configs) {
             try {
                 File file = config.getFile();
@@ -51,7 +48,19 @@ public class ConfigManager {
         }
     }
 
-    public void saveAll() {
+    public void loadConfig(String name) {
+        Config config = new ModulesConfig(name);
+        File file = config.getFile();
+        if (file.exists()) {
+            try {
+                readConfigFile(config, file);
+            } catch (IOException e) {
+                LOGGER.error("Failed to load config " + name, e);
+            }
+        }
+    }
+
+    public void save() {
         for (Config config : this.configs) {
             this.saveConfig(config);
         }
@@ -65,5 +74,10 @@ public class ConfigManager {
         } catch (IOException e) {
             LOGGER.error("Failed to save config " + config.getName(), e);
         }
+    }
+
+    public void saveConfig(String name) {
+        Config config = new ModulesConfig(name);
+        saveConfig(config);
     }
 }

@@ -50,6 +50,10 @@ extends ClientBase {
         NONE
     }
 
+    public RotationHandler() {
+        ZenClient.getInstance().getEventBus().register(this);
+    }
+
     public static void setTargetRotation(Rotation rotation) {
         setTargetRotation(rotation, true);
     }

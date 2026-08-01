@@ -23,6 +23,7 @@ public class HudManager {
 
     public HudManager() {
         this.init();
+        ZenClient.getInstance().getEventBus().register(this);
     }
 
     public void init() {

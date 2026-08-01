@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 import shit.zen.ClientBase;
 import shit.zen.ZenClient;
@@ -48,6 +50,7 @@ import shit.zen.modules.impl.world.*;
 import shit.zen.event.EventTarget;
 
 public class ModuleManager extends ClientBase {
+    @Getter
     private final Map<String, Module> moduleMap = new ConcurrentHashMap<>();
 
     public ModuleManager() {

@@ -34,7 +34,7 @@ extends Command {
                 ChatUtil.print("Bound " + this.name + " to key " + keyCode + ".");
             }
             ZenClient.getInstance().getEventBus().unregister(this);
-            ZenClient.getInstance().getConfigManager().saveAll();
+            ZenClient.getInstance().getConfigManager().save();
         }
     }
 
@@ -77,7 +77,7 @@ extends Command {
             if (keyName.equalsIgnoreCase("none")) {
                 module.setKey(InputConstants.UNKNOWN.getValue());
                 ChatUtil.print("Unbound " + moduleName + ".");
-                ZenClient.getInstance().getConfigManager().saveAll();
+                ZenClient.getInstance().getConfigManager().save();
                 return;
             }
             InputConstants.Key key = InputConstants.getKey("key.keyboard." + keyName.toLowerCase());
@@ -87,7 +87,7 @@ extends Command {
             }
             module.setKey(key.getValue());
             ChatUtil.print("Bound " + moduleName + " to " + keyName.toUpperCase() + ".");
-            ZenClient.getInstance().getConfigManager().saveAll();
+            ZenClient.getInstance().getConfigManager().save();
         } catch (ModuleNotFoundException e) {
             ChatUtil.print("Invalid module.");
         }

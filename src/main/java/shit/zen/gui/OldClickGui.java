@@ -67,7 +67,7 @@ extends Screen {
 
     public void onClose() {
         if (ZenClient.isReady()) {
-            ZenClient.instance.getConfigManager().saveAll();
+            ZenClient.instance.getConfigManager().save();
         }
         super.onClose();
     }

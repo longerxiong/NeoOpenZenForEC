@@ -114,7 +114,7 @@ extends Screen {
             if (this.openProgress <= 0.0f) {
                 this.currentScaleSwitchState = PanelClickGui.OpenState.CLOSED;
                 if (ZenClient.isReady()) {
-                    ZenClient.instance.getConfigManager().saveAll();
+                    ZenClient.instance.getConfigManager().save();
                 }
                 this.minecraft.setScreen(null);
             }

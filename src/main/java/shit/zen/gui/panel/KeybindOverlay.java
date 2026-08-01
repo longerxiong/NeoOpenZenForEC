@@ -8,7 +8,6 @@ import shit.zen.ZenClient;
 import shit.zen.gui.PanelClickGui;
 import shit.zen.modules.KeyBind;
 import shit.zen.modules.Module;
-import shit.zen.render.DrawContext;
 import shit.zen.render.FontPresets;
 import shit.zen.render.FontRenderer;
 import shit.zen.render.GlHelper;
@@ -70,7 +69,7 @@ extends ClientBase {
             if (this.targetModule != null) {
                 this.targetModule.setKey(-1);
                 if (ZenClient.isReady()) {
-                    ZenClient.instance.getConfigManager().saveAll();
+                    ZenClient.instance.getConfigManager().save();
                 }
                 PanelClickGui.panelClickGui.addToast(this.targetModule.getName() + " keybind cleared");
             }
@@ -80,7 +79,7 @@ extends ClientBase {
         if (this.targetModule != null && keyCode != -1) {
             this.targetModule.setKey(keyCode);
             if (ZenClient.isReady()) {
-                ZenClient.instance.getConfigManager().saveAll();
+                ZenClient.instance.getConfigManager().save();
             }
             KeyBind keyBind = new KeyBind(keyCode);
             String keyName = keyBind.getName();

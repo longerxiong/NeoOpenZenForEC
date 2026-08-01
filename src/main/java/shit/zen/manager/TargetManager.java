@@ -21,6 +21,7 @@ extends ClientBase {
 
     public TargetManager() {
         INSTANCE = this;
+        ZenClient.getInstance().getEventBus().register(this);
     }
 
     @EventTarget

@@ -18,8 +18,8 @@ import shit.zen.event.EventBus;
 import shit.zen.event.EventTarget;
 import shit.zen.event.impl.TickEvent;
 import shit.zen.gui.IntroAnimation;
-import shit.zen.manager.CommandManager;
-import shit.zen.manager.ConfigManager;
+import shit.zen.command.CommandManager;
+import shit.zen.config.ConfigManager;
 import shit.zen.manager.HudManager;
 import shit.zen.manager.LagManager;
 import shit.zen.modules.ModuleManager;
@@ -66,7 +66,7 @@ public class ZenClient extends ClientBase {
     public static float serverTickRate;
     public static boolean isReady;
     public static boolean isMCPMapped;
-    public static String configDir = System.getProperty("user.home") + File.separator + ".zen";
+    public static String configDir = System.getProperty("user.home") + File.separator + ".neozen";
     public static String username = "";
 
     private static final String[] CLOUD_ASSET_NAMES = { "panel.png", "ptr.png", "lie.wav", "truth.wav" };
@@ -98,7 +98,6 @@ public class ZenClient extends ClientBase {
             mc = getMcInstance();
             this.eventBus = new EventBus();
             this.rotationHandler = new RotationHandler();
-            this.eventBus.register(this.rotationHandler);
             this.moduleManager = new ModuleManager();
             this.hudManager = new HudManager();
             this.commandManager = new CommandManager();
@@ -106,9 +105,6 @@ public class ZenClient extends ClientBase {
             this.extractCloudAssets();
             this.lagManager = new LagManager();
             this.targetManager = new TargetManager();
-            this.eventBus.register(this.hudManager);
-            this.eventBus.register(this.lagManager);
-            this.eventBus.register(this.targetManager);
             this.eventBus.register(this);
             this.commandManager.initCommands();
             this.eventBus.register(new IntroAnimation());
@@ -133,7 +129,7 @@ public class ZenClient extends ClientBase {
         if (isReady() && !moduleInit) {
             moduleInit = true;
             this.moduleManager.initModules();
-            this.configManager.loadAll();
+            this.configManager.load();
         }
     }
 
@@ -150,12 +146,12 @@ public class ZenClient extends ClientBase {
     public void shutdown() {
         isReady = false;
         if (this.configManager != null) {
-            this.configManager.saveAll();
+            this.configManager.save();
         }
     }
 
     private void extractCloudAssets() {
-        File targetDir = ConfigManager.CONFIG_DIR;
+        File targetDir = new File(configDir, "assets");
         if (!targetDir.exists() && !targetDir.mkdirs()) {
             logger.warn("Failed to create config directory at {}", targetDir);
             return;

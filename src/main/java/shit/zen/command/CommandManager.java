@@ -1,9 +1,8 @@
-package shit.zen.manager;
+package shit.zen.command;
 
 import java.util.HashMap;
 import java.util.Map;
 import shit.zen.ZenClient;
-import shit.zen.command.Command;
 import shit.zen.command.impl.BindCommand;
 import shit.zen.command.impl.ConfigCommand;
 import shit.zen.command.impl.LanguageCommand;
