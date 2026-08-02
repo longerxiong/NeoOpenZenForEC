@@ -12,6 +12,7 @@ import shit.zen.ZenClient;
 import shit.zen.asm.Invocation;
 import shit.zen.event.impl.EntityRemoveEvent;
 import shit.zen.modules.impl.combat.KillAura;
+import shit.zen.modules.impl.combat.TPAura;
 import shit.zen.modules.impl.exploit.RemoteStore;
 import shit.zen.modules.impl.movement.KeepSprint;
 
@@ -73,7 +74,10 @@ public class PlayerPatch {
         boolean auraEnabled = KillAura.INSTANCE != null
                 && KillAura.INSTANCE.isEnabled()
                 && KillAura.INSTANCE.keepSprint.getValue();
-        return standaloneEnabled || auraEnabled;
+        boolean tpAuraEnabled = TPAura.INSTANCE != null
+                && TPAura.INSTANCE.isEnabled()
+                && TPAura.INSTANCE.keepSprint.getValue();
+        return standaloneEnabled || auraEnabled || tpAuraEnabled;
     }
 
     @Inject(method = "attack", desc = "(Lnet/minecraft/world/entity/Entity;)V", at = @At(At.Type.HEAD))

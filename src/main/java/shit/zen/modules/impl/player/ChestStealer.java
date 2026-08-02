@@ -51,6 +51,7 @@ import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.KillAura;
 import shit.zen.modules.impl.movement.Scaffold;
 import shit.zen.modules.settings.impl.BooleanSetting;
+import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.modules.settings.impl.NumberSetting;
 import shit.zen.utils.animation.Timer;
 import shit.zen.utils.game.BlockUtil;
@@ -73,8 +74,11 @@ extends Module {
     private static final int FILLED_SLOT_COLOR = 0xE12B3038;
     private static final int SLOT_OUTLINE_COLOR = 0x22FFFFFF;
     private static final Timer actionTimer;
-    private final NumberSetting clickDelaySetting = new NumberSetting("Delay", 200, 0, 1000, 10);
-    private final NumberSetting openDelaySetting = new NumberSetting("Open Delay", 2, 0, 10, 1);
+    private final ModeSetting modeSetting = new ModeSetting("Mode", "Normal", "Instant").withDefault("Normal");
+    private final NumberSetting clickDelaySetting = new NumberSetting(
+            "Delay", 200, 0, 1000, 10, () -> !this.isInstant());
+    private final NumberSetting openDelaySetting = new NumberSetting(
+            "Open Delay", 2, 0, 10, 1, () -> !this.isInstant());
     private final BooleanSetting chestSetting = new BooleanSetting("Chest", true);
     private final BooleanSetting enderChestSetting = new BooleanSetting("Ender Chest", false);
     private final BooleanSetting furnaceSetting = new BooleanSetting("Furnace", true);
@@ -111,7 +115,14 @@ extends Module {
     }
 
     public static boolean isRateLimited() {
+        if (INSTANCE != null && INSTANCE.isInstant()) {
+            return false;
+        }
         return !stealTimer.hasPassed(100L) && !openTimer.hasPassed((int)clickDelayMs);
+    }
+
+    private boolean isInstant() {
+        return this.modeSetting.is("Instant");
     }
 
     public static boolean isSilentContainerScreen(Screen screen) {
@@ -242,7 +253,7 @@ extends Module {
                 || mc.getConnection() == null || KillAura.target != null || Scaffold.INSTANCE.isEnabled()) {
             return;
         }
-        if (!openTimer.hasPassed((int) clickDelayMs)
+        if (!this.isInstant() && !openTimer.hasPassed((int) clickDelayMs)
                 || !mc.player.isAlive() || mc.player.isDeadOrDying()
                 || mc.player.isSpectator() || motionEvent.isPre()) {
             return;
@@ -266,23 +277,15 @@ extends Module {
                 this.queueBuilt = false;
                 this.stealTargetQueue.clear();
                 this.stealIndex = 0;
-            } else {
+            }
+            if (this.isInstant()) {
+                this.stealFromContainerScreen(containerScreen);
+            } else if (screen == this.lastScreen) {
                 ++this.openDelayTicks;
                 if (this.openDelayTicks < this.openDelaySetting.getValue().intValue()) {
                     return;
                 }
-                String title = containerScreen.getTitle().getString();
-                String chestTitle = Component.translatable("container.chest").getString();
-                String doubleChestTitle = Component.translatable("container.chestDouble").getString();
-                String enderChestTitle = Component.translatable("container.enderchest").getString();
-                ChestMenu chestMenu = containerScreen.getMenu();
-                if (this.chestSetting.getValue() && (title.equals(chestTitle) || title.equals(doubleChestTitle) || title.equals("Chest"))) {
-                    if (this.shouldCloseChest(chestMenu)) {
-                        this.stealFromChest(chestMenu);
-                    }
-                } else if (this.enderChestSetting.getValue() && title.equals(enderChestTitle) && this.shouldCloseChest(chestMenu)) {
-                    this.stealFromChest(chestMenu);
-                }
+                this.stealFromContainerScreen(containerScreen);
             }
         } else {
             this.openDelayTicks = 0;
@@ -303,8 +306,22 @@ extends Module {
         this.lastScreen = screen;
     }
 
+    private void stealFromContainerScreen(ContainerScreen containerScreen) {
+        String title = containerScreen.getTitle().getString();
+        String chestTitle = Component.translatable("container.chest").getString();
+        String doubleChestTitle = Component.translatable("container.chestDouble").getString();
+        String enderChestTitle = Component.translatable("container.enderchest").getString();
+        ChestMenu chestMenu = containerScreen.getMenu();
+        boolean chest = this.chestSetting.getValue()
+                && (title.equals(chestTitle) || title.equals(doubleChestTitle) || title.equals("Chest"));
+        boolean enderChest = this.enderChestSetting.getValue() && title.equals(enderChestTitle);
+        if ((chest || enderChest) && this.shouldCloseChest(chestMenu)) {
+            this.stealFromChest(chestMenu);
+        }
+    }
+
     private boolean shouldCloseChest(ChestMenu chestMenu) {
-        if (this.isChestDone(chestMenu) && stealTimer.hasPassed(100L)) {
+        if (this.isChestDone(chestMenu) && (this.isInstant() || stealTimer.hasPassed(100L))) {
             mc.player.closeContainer();
             return false;
         }
@@ -312,11 +329,34 @@ extends Module {
     }
 
     private void stealFromChest(ChestMenu chestMenu) {
+        if (this.isInstant()) {
+            this.stealInstantFromChest(chestMenu);
+            return;
+        }
         ++this.accessCount;
         if (this.smartStealingSetting.getValue() && this.accessCount > 1) {
             this.stealSmartMode(chestMenu);
         } else {
             this.stealRandomMode(chestMenu);
+        }
+    }
+
+    private void stealInstantFromChest(ChestMenu chestMenu) {
+        List<Integer> slots;
+        if (this.smartStealingSetting.getValue()) {
+            this.buildStealQueue(chestMenu);
+            slots = this.stealTargetQueue.stream()
+                    .map(StealTarget::slotIndex)
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        } else {
+            slots = this.getStealableChestSlots(chestMenu);
+        }
+        if (this.randomClickSetting.getValue()) {
+            java.util.Collections.shuffle(slots, this.random);
+        }
+        this.executeInstantClicks(chestMenu, slots);
+        if (this.isChestComplete(chestMenu)) {
+            mc.player.closeContainer();
         }
     }
 
@@ -572,6 +612,20 @@ extends Module {
     }
 
     private void stealFromFurnace(FurnaceMenu furnaceMenu) {
+        if (this.isInstant()) {
+            try {
+                Container container = this.getFurnaceContainer(furnaceMenu);
+                if (container != null) {
+                    this.executeInstantClicks(furnaceMenu, this.getStealableContainerSlots(container));
+                    if (this.isFurnaceDone(furnaceMenu)) {
+                        mc.player.closeContainer();
+                    }
+                }
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+            return;
+        }
         ++this.accessCount;
         try {
             Container container = this.getFurnaceContainer(furnaceMenu);
@@ -600,6 +654,16 @@ extends Module {
     }
 
     private void stealFromBrewing(BrewingStandMenu brewingStandMenu) {
+        if (this.isInstant()) {
+            Container container = ReflectionUtil.getBrewingStand(brewingStandMenu);
+            if (container != null) {
+                this.executeInstantClicks(brewingStandMenu, this.getStealableContainerSlots(container));
+                if (this.isBrewingDone(brewingStandMenu)) {
+                    mc.player.closeContainer();
+                }
+            }
+            return;
+        }
         ++this.accessCount;
         Container container = ReflectionUtil.getBrewingStand(brewingStandMenu);
         if (container == null) {
@@ -670,6 +734,25 @@ extends Module {
             stealTimer.reset();
             actionTimer.reset();
         }
+    }
+
+    private void executeInstantClicks(AbstractContainerMenu menu, List<Integer> slots) {
+        this.resetState();
+        int clicks = 0;
+        for (int slot : slots) {
+            if (clicks >= 128) {
+                break;
+            }
+            if (menu.getSlot(slot).getItem().isEmpty()) {
+                continue;
+            }
+            mc.gameMode.handleInventoryMouseClick(menu.containerId, slot, 0, ClickType.QUICK_MOVE, mc.player);
+            clicks++;
+        }
+        openTimer.reset();
+        stealTimer.reset();
+        actionTimer.reset();
+        this.countBlocks();
     }
 
     private boolean tryStealSlot(ChestMenu chestMenu, int slot) {

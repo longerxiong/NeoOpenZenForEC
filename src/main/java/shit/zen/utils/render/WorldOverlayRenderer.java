@@ -294,6 +294,22 @@ public final class WorldOverlayRenderer extends ClientBase {
         }
     }
 
+    public static void drawLineStrip(List<Vec3> points, int color) {
+        if (points == null || points.size() < 2 || pendingLines.size() >= MAX_PENDING_LINES) {
+            return;
+        }
+
+        float[] p1 = new float[2];
+        float[] p2 = new float[2];
+        for (int i = 1; i < points.size() && pendingLines.size() < MAX_PENDING_LINES; i++) {
+            Vec3 from = points.get(i - 1);
+            Vec3 to = points.get(i);
+            if (projectSegment(from.x, from.y, from.z, to.x, to.y, to.z, p1, p2)) {
+                pendingLines.add(new ScreenLine(p1[0], p1[1], p2[0], p2[1], color));
+            }
+        }
+    }
+
     private static int toArgb(float r, float g, float b, float a) {
         return clamp255(a) << 24 | clamp255(r) << 16 | clamp255(g) << 8 | clamp255(b);
     }

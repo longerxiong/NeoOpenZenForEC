@@ -50,11 +50,17 @@ import shit.zen.utils.misc.PacketUtil;
 import shit.zen.event.EventTarget;
 
 public class InventoryManager extends Module {
+    private static final int MAX_INSTANT_ACTIONS = 128;
+
     public static InventoryManager INSTANCE;
 
-    private final NumberSetting actionDelaySetting = new NumberSetting("Delay", 200, 0, 500, 10);
-    private final NumberSetting sprintDelayTicksSetting = new NumberSetting("Open Delay", 2, 0, 10, 1);
-    private final NumberSetting dropDelaySetting = new NumberSetting("Drop Delay", 200, 0, 500, 10);
+    private final ModeSetting modeSetting = new ModeSetting("Mode", "Normal", "Instant").withDefault("Normal");
+    private final NumberSetting actionDelaySetting = new NumberSetting(
+            "Delay", 200, 0, 500, 10, () -> !this.isInstant());
+    private final NumberSetting sprintDelayTicksSetting = new NumberSetting(
+            "Open Delay", 2, 0, 10, 1, () -> !this.isInstant());
+    private final NumberSetting dropDelaySetting = new NumberSetting(
+            "Drop Delay", 200, 0, 500, 10, () -> !this.isInstant());
     private final BooleanSetting autoArmorSetting = new BooleanSetting("Auto Armor", true);
     private final BooleanSetting throwItemsSetting = new BooleanSetting("Throw Items", true);
     private final ModeSetting offhandItemSetting = new ModeSetting("Offhand Items", "Golden Apple", "Fishing Rod", "None").withDefault("Projectile");
@@ -89,10 +95,31 @@ public class InventoryManager extends Module {
     private boolean justClosedInventory = false;
     private final Queue<Packet<ServerGamePacketListener>> pendingPackets = new ConcurrentLinkedQueue<>();
     private int sprintDelayTicks = 0;
+    private int actionSequence = 0;
 
     public InventoryManager() {
         super("InventoryManager", Category.PLAYER, 66);
         INSTANCE = this;
+    }
+
+    private boolean isInstant() {
+        return this.modeSetting.is("Instant");
+    }
+
+    private boolean isActionReady() {
+        return this.isInstant() || actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue());
+    }
+
+    private boolean isDropReady() {
+        return this.isInstant()
+                || this.fastThrowSetting.getValue()
+                || actionTimer.hasPassed(this.dropDelaySetting.getValue().intValue());
+    }
+
+    private void markInventoryAction() {
+        this.didInventoryAction = true;
+        this.actionSequence++;
+        actionTimer.reset();
     }
 
     @Override
@@ -164,7 +191,7 @@ public class InventoryManager extends Module {
         // packets alone - we only proxy our own InventoryMenu traffic.
         boolean externalContainerOpen = mc.screen instanceof AbstractContainerScreen acs
                 && acs.getMenu().containerId != mc.player.inventoryMenu.containerId;
-        if (!externalContainerOpen
+        if (!this.isInstant() && !externalContainerOpen
                 && (packet instanceof ServerboundContainerClickPacket
                         || packet instanceof ServerboundContainerClosePacket)) {
 //            ChatUtil.print("Cancelled Inventory Packet: " + packet.getClass().getName());
@@ -275,7 +302,7 @@ public class InventoryManager extends Module {
                 : !GuiMove.INSTANCE.isEnabled() && this.idleTicks <= 1;
 
         if (externalContainerOpen
-                || ChestStealer.isRateLimited()
+                || (!this.isInstant() && ChestStealer.isRateLimited())
                 || Scaffold.INSTANCE.isEnabled()
                 || blockedByMode) {
             this.pendingOffhandPlace = false;
@@ -292,12 +319,29 @@ public class InventoryManager extends Module {
 
         if (this.inventoryOnlySetting.getValue() && mc.screen instanceof InventoryScreen) {
             this.sprintWaitTicks++;
-            if (this.sprintWaitTicks < this.sprintDelayTicksSetting.getValue().intValue()) {
+            if (!this.isInstant()
+                    && this.sprintWaitTicks < this.sprintDelayTicksSetting.getValue().intValue()) {
                 return;
             }
         }
 
-        if (this.performInventoryAction()) {
+        if (this.isInstant()) {
+            while (!this.pendingPackets.isEmpty()) {
+                PacketUtil.sendQueued(this.pendingPackets.poll());
+            }
+            boolean performed = false;
+            for (int action = 0; action < MAX_INSTANT_ACTIONS; action++) {
+                int previousSequence = this.actionSequence;
+                boolean reportedAction = this.performInventoryAction();
+                boolean performedAction = this.actionSequence != previousSequence;
+                if (!reportedAction && !performedAction) {
+                    break;
+                }
+                performed |= performedAction;
+            }
+            isPerformingAction = performed;
+            this.skipNextTick = !performed;
+        } else if (this.performInventoryAction()) {
             isPerformingAction = true;
         } else {
             isPerformingAction = false;
@@ -312,7 +356,7 @@ public class InventoryManager extends Module {
                 ItemStack equipped = mc.player.getInventory().getItem(36 + i);
                 if (!equipped.isEmpty()
                         && (equipped.is(ItemTags.HEAD_ARMOR) || equipped.is(ItemTags.CHEST_ARMOR) || equipped.is(ItemTags.LEG_ARMOR) || equipped.is(ItemTags.FOOT_ARMOR))
-                        && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                        && this.isActionReady()) {
                     EquipmentSlot slot = switch (36 + i) {
                         case 39 -> EquipmentSlot.HEAD;
                         case 38 -> EquipmentSlot.CHEST;
@@ -323,8 +367,7 @@ public class InventoryManager extends Module {
                         mc.gameMode.handleInventoryMouseClick(
                                 mc.player.inventoryMenu.containerId,
                                 4 + (4 - i), 1, ClickType.THROW, mc.player);
-                        this.didInventoryAction = true;
-                        actionTimer.reset();
+                        this.markInventoryAction();
                         return true;
                     }
                 }
@@ -338,13 +381,12 @@ public class InventoryManager extends Module {
                 boolean isBest = ItemUtil.getBestArmorScore(equipSlot) == candidateScore;
                 boolean betterThanEquipped = ItemUtil.getEquippedArmorScore(equipSlot) < candidateScore;
                 if (isBest && betterThanEquipped
-                        && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                        && this.isActionReady()) {
                     int target = i < 9 ? i + 36 : i;
                     mc.gameMode.handleInventoryMouseClick(
                             mc.player.inventoryMenu.containerId,
                             target, 0, ClickType.QUICK_MOVE, mc.player);
-                    this.didInventoryAction = true;
-                    actionTimer.reset();
+                    this.markInventoryAction();
                     return true;
                 }
             }
@@ -352,12 +394,11 @@ public class InventoryManager extends Module {
 
         // --- finish a pending offhand swap from the previous tick ---
         if (this.pendingOffhandPlace
-                && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                && this.isActionReady()) {
             mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                     45, 0, ClickType.PICKUP, mc.player);
-            this.didInventoryAction = true;
             this.pendingOffhandPlace = false;
-            actionTimer.reset();
+            this.markInventoryAction();
         }
 
         // --- offhand preference ---
@@ -365,7 +406,7 @@ public class InventoryManager extends Module {
         if ("Golden Apple".equals(offhandPref)) {
             ItemStack offhand = mc.player.getInventory().getItem(40);
             int slot = ItemUtil.getSlot(Items.GOLDEN_APPLE);
-            if (slot != -1 && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+            if (slot != -1 && this.isActionReady()) {
                 if (offhand.getItem() != Items.GOLDEN_APPLE) {
                     this.moveToOffhand(slot);
                     return true;
@@ -375,9 +416,8 @@ public class InventoryManager extends Module {
                     int target = slot < 9 ? slot + 36 : slot;
                     mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                             target, 0, ClickType.PICKUP, mc.player);
-                    this.didInventoryAction = true;
                     this.pendingOffhandPlace = true;
-                    actionTimer.reset();
+                    this.markInventoryAction();
                     return true;
                 }
             }
@@ -393,7 +433,7 @@ public class InventoryManager extends Module {
                     shouldSwap = offhand.getCount() < bestProjectile.getCount();
                 }
                 if (shouldSwap && slot != -1
-                        && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                        && this.isActionReady()) {
                     this.moveToOffhand(slot);
                     return true;
                 }
@@ -402,7 +442,7 @@ public class InventoryManager extends Module {
             ItemStack offhand = mc.player.getInventory().getItem(40);
             int slot = ItemUtil.getSlot(Items.FISHING_ROD);
             if (slot != -1
-                    && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())
+                    && this.isActionReady()
                     && offhand.getItem() != Items.FISHING_ROD) {
                 this.moveToOffhand(slot);
                 return true;
@@ -419,7 +459,7 @@ public class InventoryManager extends Module {
                     shouldSwap = true;
                 }
                 if (shouldSwap && slot != -1
-                        && actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                        && this.isActionReady()) {
                     this.moveToOffhand(slot);
                     return true;
                 }
@@ -569,8 +609,7 @@ public class InventoryManager extends Module {
         Collections.shuffle(order);
         for (Integer idx : order) {
             ItemStack stack = mc.player.getInventory().getItem(idx);
-            if (!stack.isEmpty() && !this.isUsefulItem(stack)) {
-                this.throwItem(stack);
+            if (!stack.isEmpty() && !this.isUsefulItem(stack) && this.throwItem(stack)) {
                 return true;
             }
         }
@@ -582,15 +621,13 @@ public class InventoryManager extends Module {
         int source = slot < 9 ? slot + 36 : slot;
         mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                 source, 40, ClickType.SWAP, mc.player);
-        this.didInventoryAction = true;
-        actionTimer.reset();
+        this.markInventoryAction();
     }
 
     private boolean throwItem(ItemStack stack) {
         if (mc.gameMode == null || mc.player == null) return false;
         if (!this.throwItemsSetting.getValue() || !ItemUtil.isUsable(stack)) return false;
-        if (!actionTimer.hasPassed(this.dropDelaySetting.getValue().intValue())
-                && !this.fastThrowSetting.getValue()) {
+        if (!this.isDropReady()) {
             return false;
         }
         int slot = ItemUtil.getSlot(stack);
@@ -598,8 +635,7 @@ public class InventoryManager extends Module {
         int source = slot < 9 ? slot + 36 : slot;
         mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                 source, 1, ClickType.THROW, mc.player);
-        this.didInventoryAction = true;
-        actionTimer.reset();
+        this.markInventoryAction();
         return true;
     }
 
@@ -607,7 +643,7 @@ public class InventoryManager extends Module {
         if (mc.gameMode == null || mc.player == null) return false;
         ItemStack current = mc.player.getInventory().getItem(targetSlot);
         if (!ItemUtil.isUsable(current) || stack == current
-                || !actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                || !this.isActionReady()) {
             return false;
         }
         int source = ItemUtil.getSlot(stack);
@@ -615,8 +651,7 @@ public class InventoryManager extends Module {
         int from = source < 9 ? source + 36 : source;
         mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                 from, targetSlot, ClickType.SWAP, mc.player);
-        this.didInventoryAction = true;
-        actionTimer.reset();
+        this.markInventoryAction();
         return true;
     }
 
@@ -624,7 +659,7 @@ public class InventoryManager extends Module {
         if (mc.gameMode == null || mc.player == null) return false;
         ItemStack current = mc.player.getInventory().getItem(targetSlot);
         if (!ItemUtil.isUsable(current)
-                || !actionTimer.hasPassed(this.actionDelaySetting.getValue().intValue())) {
+                || !this.isActionReady()) {
             return false;
         }
         int source = ItemUtil.getSlot(item);
@@ -635,8 +670,7 @@ public class InventoryManager extends Module {
             int from = source < 9 ? source + 36 : source;
             mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId,
                     from, targetSlot, ClickType.SWAP, mc.player);
-            this.didInventoryAction = true;
-            actionTimer.reset();
+            this.markInventoryAction();
             return true;
         }
         return false;
