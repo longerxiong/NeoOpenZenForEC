@@ -262,6 +262,10 @@ extends ClientBase {
     }
 
     public static RotationUtil.BestHitInfo getBestHit(Entity entity, double range) {
+        return RotationUtil.getBestHit(entity, range, false);
+    }
+
+    public static RotationUtil.BestHitInfo getBestHit(Entity entity, double range, boolean ignoreBlocks) {
         double sampleAxis2;
         double sampleAxis1;
         Vec3 playerPos = new Vec3(mc.player.getX(), mc.player.getY(), mc.player.getZ());
@@ -301,7 +305,7 @@ extends ClientBase {
             if (rotation == null) {
                 logger.error("NULL????");
             }
-            if ((hitResult = RotationUtil.performRaycast(rotation, range)) == null) {
+            if ((hitResult = RotationUtil.performRaycast(rotation, range, ignoreBlocks)) == null) {
                 logger.error("NULL2????");
             }
             if (!RotationUtil.isHitValid(eyePos, hitResult, entity, range)) continue;
@@ -315,7 +319,7 @@ extends ClientBase {
                 return null;
             }
         }
-        return new RotationUtil.BestHitInfo(eyePos, eyePos, 1000.0, null);
+        return null;
     }
 
     public static Rotation getEntityRotation(Entity entity, float spreadFactor, float verticalSpread, float heightFraction) {
@@ -376,8 +380,15 @@ extends ClientBase {
     }
 
     public static HitResult performRaycast(Rotation rotation, double range) {
+        return RotationUtil.performRaycast(rotation, range, false);
+    }
+
+    public static HitResult performRaycast(Rotation rotation, double range, boolean ignoreBlocks) {
         if (mc.player == null || mc.level == null || rotation == null || range <= 0.0) {
             return null;
+        }
+        if (ignoreBlocks) {
+            return RayTraceUtil.rayTraceForEntity(rotation, range, 0.0f, mc.player, null, true);
         }
         AABB expandedBB;
         HitResult hitResult = RayTraceUtil.rayTrace(range, 1.0f, false, rotation);

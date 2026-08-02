@@ -46,13 +46,29 @@ extends ClientBase {
         if (itemStack == null || itemStack.isEmpty()) {
             return false;
         }
+        Item item = itemStack.getItem();
+        if (item == Items.PHANTOM_MEMBRANE
+                || item == Items.IRON_INGOT
+                || item == Items.GOLD_INGOT
+                || item == Items.LAPIS_LAZULI
+                || item == Items.PAPER
+                || item == Items.FLINT
+                || item == Items.FEATHER
+                || item == Items.NETHERITE_SCRAP
+                || item == Items.APPLE
+                || item == Items.ENCHANTED_BOOK
+                || item == Items.SPYGLASS
+                || item == Items.DIAMOND
+                || item == Items.NETHERITE_INGOT
+                || item == Items.GLOWSTONE_DUST) {
+            return true;
+        }
         if (itemStack.has(DataComponents.CUSTOM_NAME)
                 || itemStack.has(DataComponents.CUSTOM_DATA)
                 || itemStack.has(DataComponents.LORE)) {
             return false;
         }
 
-        Item item = itemStack.getItem();
         if (item == Items.IRON_INGOT
                 || item == Items.GOLD_INGOT
                 || item == Items.NETHERITE_SCRAP
@@ -176,7 +192,7 @@ extends ClientBase {
         return value;
     }
 
-    private static float getDurabilityRatio(ItemStack stack) {
+    public static float getDurabilityRatio(ItemStack stack) {
         if (!stack.isDamageableItem() || stack.getMaxDamage() <= 0) {
             return 1.0f;
         }
@@ -348,7 +364,10 @@ extends ClientBase {
         double armor = getAttributeValue(itemStack, Attributes.ARMOR, slot, 0.0);
         double toughness = getAttributeValue(itemStack, Attributes.ARMOR_TOUGHNESS, slot, 0.0);
         double knockbackResistance = getAttributeValue(itemStack, Attributes.KNOCKBACK_RESISTANCE, slot, 0.0);
-        float score = (float)(armor * 100.0 + toughness * 10.0 + knockbackResistance * 100.0);
+        // Keep material as the primary ordering; enchantments only break ties
+        // between pieces made from the same material.
+        float score = getArmorMaterialRank(itemStack) * 10000.0f
+                + (float)(armor * 100.0 + toughness * 10.0 + knockbackResistance * 100.0);
         score += getEnchantLevel(itemStack, Enchantments.PROTECTION) * 20.0f;
         score += getEnchantLevel(itemStack, Enchantments.PROJECTILE_PROTECTION) * 12.0f;
         score += getEnchantLevel(itemStack, Enchantments.BLAST_PROTECTION) * 12.0f;
@@ -356,6 +375,24 @@ extends ClientBase {
         score += getEnchantLevel(itemStack, Enchantments.FEATHER_FALLING) * 10.0f;
         score += getEnchantLevel(itemStack, Enchantments.THORNS) * 5.0f;
         return score + getDurabilityRatio(itemStack) * 0.01f;
+    }
+
+    private static int getArmorMaterialRank(ItemStack itemStack) {
+        Item item = itemStack.getItem();
+        if (item == Items.NETHERITE_HELMET || item == Items.NETHERITE_CHESTPLATE
+                || item == Items.NETHERITE_LEGGINGS || item == Items.NETHERITE_BOOTS) return 6;
+        if (item == Items.DIAMOND_HELMET || item == Items.DIAMOND_CHESTPLATE
+                || item == Items.DIAMOND_LEGGINGS || item == Items.DIAMOND_BOOTS) return 5;
+        if (item == Items.IRON_HELMET || item == Items.IRON_CHESTPLATE
+                || item == Items.IRON_LEGGINGS || item == Items.IRON_BOOTS) return 4;
+        if (item == Items.TURTLE_HELMET || item == Items.CHAINMAIL_HELMET
+                || item == Items.CHAINMAIL_CHESTPLATE || item == Items.CHAINMAIL_LEGGINGS
+                || item == Items.CHAINMAIL_BOOTS) return 3;
+        if (item == Items.GOLDEN_HELMET || item == Items.GOLDEN_CHESTPLATE
+                || item == Items.GOLDEN_LEGGINGS || item == Items.GOLDEN_BOOTS) return 2;
+        if (item == Items.LEATHER_HELMET || item == Items.LEATHER_CHESTPLATE
+                || item == Items.LEATHER_LEGGINGS || item == Items.LEATHER_BOOTS) return 1;
+        return 0;
     }
 
     public static float getCrossbowScore(ItemStack itemStack) {
@@ -532,6 +569,21 @@ extends ClientBase {
 
     public static ItemStack getBestAxe() {
         return ItemUtil.getAllItems().stream().filter(itemStack -> !itemStack.isEmpty() && itemStack.getItem() instanceof AxeItem && !ItemUtil.isLegitAxe(itemStack) && ItemUtil.isUsable(itemStack)).max(Comparator.comparingDouble(ItemUtil::getDigSpeed)).orElse(null);
+    }
+
+    public static ItemStack getBestAxeForTools() {
+        ItemStack regularAxe = ItemUtil.getBestAxe();
+        if (regularAxe != null) {
+            return regularAxe;
+        }
+        return ItemUtil.getAllItems().stream()
+                .filter(itemStack -> !itemStack.isEmpty()
+                        && itemStack.getItem() instanceof AxeItem
+                        && ItemUtil.isLegitAxe(itemStack)
+                        && ItemUtil.isUsable(itemStack))
+                .max(Comparator.comparingDouble(ItemUtil::getDurabilityRatio)
+                        .thenComparingDouble(ItemUtil::getAxeDamage))
+                .orElse(null);
     }
 
     public static ItemStack getBestSharpAxe() {

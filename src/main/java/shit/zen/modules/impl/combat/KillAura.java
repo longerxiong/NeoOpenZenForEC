@@ -34,12 +34,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import shit.zen.ClientBase;
 import shit.zen.ZenClient;
-import shit.zen.event.impl.PreMotionEvent;
-import shit.zen.event.impl.Render2DEvent;
-import shit.zen.event.impl.RenderEvent;
-import shit.zen.event.impl.SprintEvent;
-import shit.zen.event.impl.TickEvent;
-import shit.zen.event.impl.WorldChangeEvent;
+import shit.zen.event.impl.*;
 import shit.zen.modules.Category;
 import shit.zen.modules.Module;
 import shit.zen.modules.impl.combat.antikb.NoXZMode;
@@ -69,13 +64,14 @@ public class KillAura extends Module {
     public static Entity aimingTarget;
     public static List<Entity> targetList = new ArrayList<>();
 
-    // Fields kept in sync with the obfuscated jar: 13 BooleanSetting / 8
+    // Fields kept in sync with the obfuscated jar: 14 BooleanSetting / 8
     // NumberSetting / 3 ModeSetting, in declaration order.
     public final BooleanSetting attackPlayer    = new BooleanSetting("Attack Player", true);
     public final BooleanSetting attackInvisible = new BooleanSetting("Attack Invisible", false);
     public final BooleanSetting attackAnimals   = new BooleanSetting("Attack Animals", false);
     public final BooleanSetting attackMobs      = new BooleanSetting("Attack Mobs", true);
     public final BooleanSetting multiAttack     = new BooleanSetting("Multi Attack", true);
+    public final BooleanSetting throughWalls    = new BooleanSetting("Through Walls", false);
     public final BooleanSetting infSwitch       = new BooleanSetting("Infinity Switch", false);
     public final BooleanSetting preferBaby      = new BooleanSetting("Prefer Baby", false);
     public final BooleanSetting morePart        = new BooleanSetting("More Particles", false);
@@ -296,7 +292,7 @@ public class KillAura extends Module {
         this.prevBestHit = this.currentBestHit;
         this.currentBestHit = null;
         if (aimingTarget != null) {
-            this.currentBestHit = RotationUtil.getBestHit(aimingTarget, this.getTargetRange());
+            this.currentBestHit = RotationUtil.getBestHit(aimingTarget, this.getTargetRange(), this.throughWalls.getValue());
             this.rotation = this.currentBestHit != null ? this.currentBestHit.rotation() : null;
         } else {
             this.rotation = null;
@@ -318,7 +314,7 @@ public class KillAura extends Module {
                     this.targetIndex = 0;
                 }
                 Entity nextTarget = targetList.get(this.targetIndex);
-                RotationUtil.BestHitInfo nextHit = RotationUtil.getBestHit(nextTarget, this.getTargetRange());
+                RotationUtil.BestHitInfo nextHit = RotationUtil.getBestHit(nextTarget, this.getTargetRange(), this.throughWalls.getValue());
                 if (nextHit != null && nextHit.distance() <= this.getAttackRange()) {
                     break;
                 }
@@ -385,7 +381,7 @@ public class KillAura extends Module {
         if (mc.player == null || aimRot == null) return;
 
         double attackRange = this.getAttackRange();
-        HitResult hitResult = RotationUtil.performRaycast(aimRot, attackRange);
+        HitResult hitResult = RotationUtil.performRaycast(aimRot, attackRange, this.throughWalls.getValue());
         if (hitResult != null && hitResult.getType() == HitResult.Type.ENTITY) {
             Entity hitEntity = ((EntityHitResult) hitResult).getEntity();
             if (AntiBots.isBot(hitEntity)) {
@@ -477,7 +473,10 @@ public class KillAura extends Module {
         if (vec3.distanceTo(mc.player.getEyePosition()) > this.getTargetRange()) {
             return false;
         }
-        return RotationUtil.isEntityInFov(entity, this.fov.getValue().floatValue() / 2.0f);
+        if (!RotationUtil.isEntityInFov(entity, this.fov.getValue().floatValue() / 2.0f)) {
+            return false;
+        }
+        return true;
     }
 
     private double getAttackRange() {
@@ -572,6 +571,7 @@ public class KillAura extends Module {
         Stream<Entity> stream = StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), true)
                 .filter(this::isValidAttack);
         List<Entity> possibleTargets = stream.collect(Collectors.toList());
+        possibleTargets.removeIf(entity -> !this.canAcquireTarget(entity));
         if (this.priorityMode.is("Distance")) {
             possibleTargets.sort(Comparator.comparingDouble(KillAura::getDistanceToPlayer));
         } else if (this.priorityMode.is("FoV")) {
@@ -589,6 +589,18 @@ public class KillAura extends Module {
         }
         int limit = (int) Math.min(possibleTargets.size(), this.switchSize.getValue().intValue());
         return new ArrayList<>(possibleTargets.subList(0, limit));
+    }
+
+    private boolean canAcquireTarget(Entity entity) {
+        if (this.throughWalls.getValue()) {
+            return true;
+        }
+        Vec3 eyePos = mc.player.getEyePosition();
+        Vec3 hitPoint = RotationUtil.closestPoint(eyePos, entity.getBoundingBox());
+        Rotation hitRotation = RotationUtil.exactRotation(eyePos, hitPoint);
+        HitResult hitResult = RotationUtil.performRaycast(hitRotation, this.getTargetRange());
+        return hitResult instanceof EntityHitResult entityHitResult
+                && entityHitResult.getEntity() == entity;
     }
 
     private static Integer getCrystalPriority(Entity entity) {

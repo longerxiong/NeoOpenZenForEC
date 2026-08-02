@@ -535,7 +535,7 @@ public class InventoryManager extends Module {
         }
 
         if (this.axeSlotSetting.getValue().intValue() != 0) {
-            ItemStack bestAxe = ItemUtil.getBestAxe();
+            ItemStack bestAxe = ItemUtil.getBestAxeForTools();
             if (this.swapToSlot(this.axeSlotSetting.getValue().intValue() - 1, bestAxe)) {
                 return true;
             }

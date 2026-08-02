@@ -109,6 +109,7 @@ public class ModuleManager extends ClientBase {
         this.register(new MidPearl());
         this.register(new NoFall());
         this.register(new Stuck());
+        this.register(new ChestAura());
 
         this.register(new AspectRatio());
         this.register(new ChestESP());

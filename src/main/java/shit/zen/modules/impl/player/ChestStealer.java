@@ -8,8 +8,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.ItemTags;
@@ -31,6 +35,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.equipment.Equippable;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import shit.zen.event.impl.DisconnectEvent;
 import shit.zen.event.impl.GameTickEvent;
 import shit.zen.event.impl.MotionEvent;
@@ -45,6 +57,8 @@ import shit.zen.utils.game.BlockUtil;
 import shit.zen.utils.game.ItemUtil;
 import shit.zen.utils.misc.ReflectionUtil;
 import shit.zen.event.EventTarget;
+import shit.zen.utils.render.RenderUtil;
+import shit.zen.utils.render.WorldOverlayRenderer;
 
 public class ChestStealer
 extends Module {
@@ -53,6 +67,11 @@ extends Module {
     }
 
     public static ChestStealer INSTANCE;
+    private static final int PANEL_BACKGROUND_COLOR = 0xDA080A0D;
+    private static final int PANEL_OUTLINE_COLOR = 0x69D2DAE6;
+    private static final int EMPTY_SLOT_COLOR = 0xBE16191E;
+    private static final int FILLED_SLOT_COLOR = 0xE12B3038;
+    private static final int SLOT_OUTLINE_COLOR = 0x22FFFFFF;
     private static final Timer actionTimer;
     private final NumberSetting clickDelaySetting = new NumberSetting("Delay", 200, 0, 1000, 10);
     private final NumberSetting openDelaySetting = new NumberSetting("Open Delay", 2, 0, 10, 1);
@@ -64,6 +83,7 @@ extends Module {
     private final BooleanSetting onlyBestSetting = new BooleanSetting("Only Best", true);
     private final BooleanSetting randomClickSetting = new BooleanSetting("Random Click", false);
     private final BooleanSetting smartStealingSetting = new BooleanSetting("Smart Stealing", true);
+    private final BooleanSetting silent = new BooleanSetting("Silent", false);
     private static final Timer stealTimer;
     private static final Timer openTimer;
     private final Random random = new Random();
@@ -79,19 +99,46 @@ extends Module {
     private final List<ChestStealer.StealTarget> stealTargetQueue = new ArrayList<>();
     private int stealIndex = 0;
     private boolean queueBuilt = false;
+    private BlockPos pendingContainerPos;
+    private BlockPos activeContainerPos;
+    private int activeContainerId = -1;
 
     public ChestStealer() {
         super("ChestStealer", Category.PLAYER);
         INSTANCE = this;
+        NeoForge.EVENT_BUS.addListener(this::onScreenRenderPre);
+        NeoForge.EVENT_BUS.addListener(this::onScreenClosing);
     }
 
     public static boolean isRateLimited() {
         return !stealTimer.hasPassed(100L) && !openTimer.hasPassed((int)clickDelayMs);
     }
 
+    public static boolean isSilentContainerScreen(Screen screen) {
+        ChestStealer instance = INSTANCE;
+        return instance != null
+                && instance.isEnabled()
+                && instance.silent.getValue()
+                && screen instanceof ContainerScreen;
+    }
+
+    public static void captureContainerInteraction(BlockPos pos) {
+        ChestStealer instance = INSTANCE;
+        if (instance == null || !instance.isEnabled() || !instance.silent.getValue()
+                || mc.level == null || !(mc.level.getBlockEntity(pos) instanceof ChestBlockEntity)) {
+            return;
+        }
+        instance.pendingContainerPos = pos.immutable();
+    }
+
     @Override
     public void onDisable() {
         this.resetAll();
+        if (mc != null && mc.mouseHandler != null && mc.mouseHandler.isMouseGrabbed()
+                && mc.screen instanceof ContainerScreen) {
+            KeyMapping.setAll();
+            mc.mouseHandler.releaseMouse();
+        }
     }
 
     @EventTarget
@@ -101,11 +148,90 @@ extends Module {
 
     @EventTarget
     public void onGameTick(GameTickEvent gameTickEvent) {
+        if (!this.silent.getValue() && mc.screen instanceof ContainerScreen
+                && mc.mouseHandler.isMouseGrabbed()) {
+            KeyMapping.setAll();
+            mc.mouseHandler.releaseMouse();
+        }
         if (this.hasPendingClick && this.pendingMenu != null && this.pendingSlot >= 0) {
             ++this.ticksSinceMenu;
             if (this.ticksSinceMenu >= 1) {
                 this.executePendingClick();
                 this.resetState();
+            }
+        }
+    }
+
+    private void onScreenRenderPre(ScreenEvent.Render.Pre event) {
+        if (!isSilentContainerScreen(event.getScreen()) || mc.player == null
+                || !(event.getScreen() instanceof ContainerScreen containerScreen)) {
+            return;
+        }
+
+        this.renderSilentContainer(event.getGuiGraphics(), containerScreen);
+        event.setCanceled(true);
+    }
+
+    private void onScreenClosing(ScreenEvent.Closing event) {
+        if (isSilentContainerScreen(event.getScreen())) {
+            KeyMapping.setAll();
+        }
+    }
+
+    private void renderSilentContainer(GuiGraphics graphics, ContainerScreen containerScreen) {
+        ChestMenu menu = containerScreen.getMenu();
+        this.bindActiveContainer(menu);
+
+        int slotCount = menu.getRowCount() * 9;
+        if (slotCount <= 0) {
+            return;
+        }
+
+        int columns = 9;
+        int rows = menu.getRowCount();
+        int slotSize = 18;
+        int slotStep = 20;
+        int padding = 5;
+        int titleHeight = 14;
+        int contentWidth = columns * slotStep - (slotStep - slotSize);
+        int contentHeight = rows * slotStep - (slotStep - slotSize);
+        int panelWidth = contentWidth + padding * 2;
+        int panelHeight = titleHeight + contentHeight + padding * 2;
+
+        float centerX = graphics.guiWidth() / 2.0f;
+        float centerY = graphics.guiHeight() / 2.0f;
+        float[] projected = new float[2];
+        Vec3 containerCenter = this.getActiveContainerCenter();
+        if (containerCenter != null
+                && WorldOverlayRenderer.projectToScreen(containerCenter.x, containerCenter.y, containerCenter.z, projected)
+                && Float.isFinite(projected[0]) && Float.isFinite(projected[1])) {
+            centerX = projected[0];
+            centerY = projected[1];
+        }
+
+        int panelX = clamp(Math.round(centerX - panelWidth / 2.0f), 2,
+                Math.max(2, graphics.guiWidth() - panelWidth - 2));
+        int panelY = clamp(Math.round(centerY - panelHeight / 2.0f), 2,
+                Math.max(2, graphics.guiHeight() - panelHeight - 2));
+        int gridX = panelX + padding;
+        int gridY = panelY + padding + titleHeight;
+
+        graphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight,
+                PANEL_BACKGROUND_COLOR);
+        graphics.renderOutline(panelX, panelY, panelWidth, panelHeight, PANEL_OUTLINE_COLOR);
+        String title = mc.font.plainSubstrByWidth(containerScreen.getTitle().getString(), contentWidth);
+        graphics.drawString(mc.font, title, gridX, panelY + padding, 0xFFFFFFFF, true);
+
+        for (int index = 0; index < slotCount; ++index) {
+            int x = gridX + index % columns * slotStep;
+            int y = gridY + index / columns * slotStep;
+            ItemStack stack = menu.getSlot(index).getItem();
+            int slotColor = stack.isEmpty() ? EMPTY_SLOT_COLOR : FILLED_SLOT_COLOR;
+            graphics.fill(x, y, x + slotSize, y + slotSize, slotColor);
+            graphics.renderOutline(x, y, slotSize, slotSize, SLOT_OUTLINE_COLOR);
+            if (!stack.isEmpty()) {
+                graphics.renderItem(stack, x + 1, y + 1);
+                graphics.renderItemDecorations(mc.font, stack, x + 1, y + 1);
             }
         }
     }
@@ -122,6 +248,15 @@ extends Module {
             return;
         }
         Screen screen = mc.screen;
+        if (screen instanceof ContainerScreen containerScreen) {
+            this.bindActiveContainer(containerScreen.getMenu());
+            if (!this.silent.getValue() && mc.mouseHandler.isMouseGrabbed()) {
+                mc.mouseHandler.releaseMouse();
+            }
+        } else {
+            this.activeContainerPos = null;
+            this.activeContainerId = -1;
+        }
         AbstractContainerMenu containerMenu = mc.player.containerMenu;
         this.countBlocks();
         if (screen instanceof ContainerScreen containerScreen) {
@@ -201,6 +336,13 @@ extends Module {
             }
         } else if (this.isChestComplete(chestMenu) && stealTimer.hasPassed(100L)) {
             mc.player.closeContainer();
+        } else {
+            // A server-side rollback leaves the item in the chest after its
+            // original queue entry has been consumed. Rebuild the queue so it
+            // is retried instead of leaving the stealer idle.
+            this.queueBuilt = false;
+            this.stealTargetQueue.clear();
+            this.stealIndex = 0;
         }
     }
 
@@ -542,6 +684,50 @@ extends Module {
     private void resetAll() {
         this.resetState();
         this.openDelayTicks = 0;
+        this.pendingContainerPos = null;
+        this.activeContainerPos = null;
+        this.activeContainerId = -1;
+    }
+
+    private void bindActiveContainer(ChestMenu menu) {
+        if (menu.containerId == this.activeContainerId) {
+            return;
+        }
+        this.activeContainerId = menu.containerId;
+        this.activeContainerPos = this.pendingContainerPos;
+        this.pendingContainerPos = null;
+
+        if (this.activeContainerPos == null && mc.hitResult instanceof BlockHitResult hitResult
+                && mc.level.getBlockEntity(hitResult.getBlockPos()) instanceof ChestBlockEntity) {
+            this.activeContainerPos = hitResult.getBlockPos().immutable();
+        }
+    }
+
+    private Vec3 getActiveContainerCenter() {
+        if (this.activeContainerPos == null || mc.level == null
+                || !(mc.level.getBlockEntity(this.activeContainerPos) instanceof ChestBlockEntity)) {
+            return null;
+        }
+
+        Vec3 center = Vec3.atCenterOf(this.activeContainerPos).add(0.0, -0.0625, 0.0);
+        BlockState state = mc.level.getBlockState(this.activeContainerPos);
+        if (!(state.getBlock() instanceof ChestBlock) || state.getValue(ChestBlock.TYPE) == ChestType.SINGLE) {
+            return center;
+        }
+
+        BlockPos otherPos = this.activeContainerPos.relative(ChestBlock.getConnectedDirection(state));
+        if (mc.level.getBlockEntity(otherPos) instanceof ChestBlockEntity) {
+            center = center.add(
+                    (otherPos.getX() - this.activeContainerPos.getX()) * 0.5,
+                    0.0,
+                    (otherPos.getZ() - this.activeContainerPos.getZ()) * 0.5
+            );
+        }
+        return center;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private void resetState() {
@@ -566,7 +752,8 @@ extends Module {
     private boolean shouldStealItem(ItemStack itemStack) {
         int count;
         Item item = itemStack.getItem();
-        if (ItemUtil.isSkyWarsJunk(itemStack) && !this.pickTrashSetting.getValue()) {
+        // These items are never useful in SkyWars, even when trash pickup is enabled.
+        if (ItemUtil.isSkyWarsJunk(itemStack)) {
             return false;
         }
         if (item instanceof BlockItem && item != Items.COBWEB

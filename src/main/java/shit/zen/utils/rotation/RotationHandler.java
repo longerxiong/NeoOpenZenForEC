@@ -24,12 +24,8 @@ import shit.zen.modules.impl.combat.KillAura;
 import shit.zen.modules.impl.movement.FireballBlink;
 import shit.zen.modules.impl.movement.Scaffold;
 import shit.zen.modules.impl.movement.TargetStrafe;
-import shit.zen.modules.impl.player.AntiTNT;
-import shit.zen.modules.impl.player.AntiWeb;
-import shit.zen.modules.impl.player.AutoMLG;
+import shit.zen.modules.impl.player.*;
 import shit.zen.modules.impl.world.BedBreaker;
-import shit.zen.modules.impl.player.Helper;
-import shit.zen.modules.impl.player.MidPearl;
 import shit.zen.utils.animation.TickTimer;
 import shit.zen.utils.game.MovementUtil;
 import shit.zen.utils.misc.ReflectionUtil;
@@ -122,6 +118,8 @@ extends ClientBase {
             AutoThrow autoThrow = AutoThrow.INSTANCE;
             AntiKB antiKB = AntiKB.INSTANCE;
             MidPearl midPearl = MidPearl.INSTANCE;
+            BedBreaker bedBreaker = BedBreaker.INSTANCE;
+            ChestAura chestAura = ChestAura.INSTANCE;
             isRotating = true;
             if (autoMLG != null && autoMLG.isEnabled() && autoMLG.targetRotation != null) {
                 RotationHandler.setTargetRotation(autoMLG.targetRotation);
@@ -150,11 +148,14 @@ extends ClientBase {
                         killAura.movementFix.getValue());
             } else if (antiKB != null && antiKB.isEnabled() && AntiKB.rotation != null) {
                 RotationHandler.setTargetRotation(AntiKB.rotation);
-            } else if (BedBreaker.INSTANCE != null && BedBreaker.INSTANCE.isEnabled()
-                    && BedBreaker.INSTANCE.targetRotation != null) {
+            } else if (bedBreaker != null && bedBreaker.isEnabled()
+                    && bedBreaker.targetRotation != null) {
                 RotationHandler.setTargetRotation(
-                        BedBreaker.INSTANCE.targetRotation, BedBreaker.INSTANCE.getMovementFixMode());
-            } else {
+                        bedBreaker.targetRotation, bedBreaker.getMovementFixMode());
+            } else if (chestAura != null && chestAura.isEnabled() && chestAura.getRotations() != null){
+                RotationHandler.setTargetRotation(chestAura.getRotations(), chestAura.getMovefix().getValue());
+                chestAura.onRotationApplied();
+            }else {
                 isRotating = false;
                 movementFixMode = MovementFixMode.NONE;
             }

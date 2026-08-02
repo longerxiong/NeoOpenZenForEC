@@ -26,6 +26,7 @@ import shit.zen.modules.ModuleManager;
 import shit.zen.manager.TargetManager;
 import shit.zen.patch.BlockOcclusionCachePatch;
 import shit.zen.patch.BlockPatch;
+import shit.zen.patch.AbstractContainerScreenPatch;
 import shit.zen.patch.ChatScreenPatch;
 import shit.zen.patch.ClientLevelPatch;
 import shit.zen.patch.ConnectionPatch;
@@ -44,6 +45,8 @@ import shit.zen.patch.LivingEntityRendererPatch;
 import shit.zen.patch.LocalPlayerPatch;
 import shit.zen.patch.MinecraftPatch;
 import shit.zen.patch.ModListScreenPatch;
+import shit.zen.patch.MouseHandlerPatch;
+import shit.zen.patch.MultiPlayerGameModePatch;
 import shit.zen.patch.PacketUtilsPatch;
 import shit.zen.patch.ParticleEnginePatch;
 import shit.zen.patch.PlayerPatch;
@@ -208,6 +211,9 @@ public class ZenClient extends ClientBase {
         PatchRegistry.register(KeyboardHandlerPatch.class);
         PatchRegistry.register(KeyboardInputPatch.class);
         PatchRegistry.register(ChatScreenPatch.class);
+        PatchRegistry.register(AbstractContainerScreenPatch.class);
+        PatchRegistry.register(MouseHandlerPatch.class);
+        PatchRegistry.register(MultiPlayerGameModePatch.class);
         PatchRegistry.register(EntityRendererPatch.class);
         // 3D overlays: LevelRenderer.renderLevel TAIL (post-Iris finalize, reliable inject).
         PatchRegistry.register(LevelRendererPatch.class);

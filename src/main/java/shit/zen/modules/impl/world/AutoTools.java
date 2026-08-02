@@ -1,10 +1,13 @@
 package shit.zen.modules.impl.world;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.WebBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -75,8 +78,11 @@ extends Module {
     private int getBestTool(BlockPos blockPos) {
         BlockState blockState = mc.level.getBlockState(blockPos);
         Block block = blockState.getBlock();
-        int bestSlot = 0;
-        float bestSpeed = 1.0f;
+        int bestSlot = -1;
+        float bestSpeed = 0.0f;
+        int bestPriority = -1;
+        float bestDurability = 0.0f;
+        boolean bestProtectedAxe = false;
         for (int i = 0; i < 9; ++i) {
             int efficiencyLevel;
             ItemStack itemStack = mc.player.getInventory().getItem(i);
@@ -85,13 +91,43 @@ extends Module {
             if (destroySpeed > 1.0f && (efficiencyLevel = itemStack.getEnchantmentLevel(mc.level.registryAccess().holderOrThrow(Enchantments.EFFICIENCY))) > 0) {
                 destroySpeed += (float)(efficiencyLevel * efficiencyLevel + 1);
             }
-            if (!(destroySpeed > bestSpeed)) continue;
+            int priority = getToolPriority(itemStack, blockState);
+            boolean protectedAxe = ItemUtil.isLegitAxe(itemStack);
+            float durability = ItemUtil.getDurabilityRatio(itemStack);
+            if (bestSlot != -1) {
+                if (priority < bestPriority) continue;
+                if (priority == bestPriority) {
+                    if (protectedAxe != bestProtectedAxe) {
+                        if (protectedAxe) continue;
+                    } else if (protectedAxe && durability <= bestDurability) continue;
+                    else if (!protectedAxe && destroySpeed <= bestSpeed) continue;
+                }
+            }
             bestSlot = i;
             bestSpeed = destroySpeed;
+            bestPriority = priority;
+            bestDurability = durability;
+            bestProtectedAxe = protectedAxe;
         }
-        if (bestSpeed > 1.0f) {
+        if (bestSlot != -1 && (bestPriority > 0 || bestSpeed > 1.0f)) {
             return bestSlot;
         }
         return -1;
+    }
+
+    private int getToolPriority(ItemStack itemStack, BlockState blockState) {
+        if (blockState.is(BlockTags.MINEABLE_WITH_AXE)) {
+            if (itemStack.getItem() instanceof AxeItem) {
+                return ItemUtil.isLegitAxe(itemStack) ? 1 : 2;
+            }
+            return 0;
+        }
+        if (blockState.is(BlockTags.MINEABLE_WITH_PICKAXE)) {
+            return itemStack.is(ItemTags.PICKAXES) ? 2 : 0;
+        }
+        if (blockState.is(BlockTags.MINEABLE_WITH_SHOVEL)) {
+            return itemStack.getItem() instanceof ShovelItem ? 2 : 0;
+        }
+        return 0;
     }
 }
