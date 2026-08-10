@@ -20,6 +20,8 @@ import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fStack;
 
 public class DrawContext {
+    private static final float ANTIALIAS_WIDTH_PIXELS = 1.25f;
+
     private record Vertex(float x, float y, float u, float v, int color) {
     }
 
@@ -188,8 +190,16 @@ public class DrawContext {
             this.drawRoundedRectStroke(rectangle, paint);
             return;
         }
-        List<float[]> outline = this.roundedOutline(rectangle);
-        this.submitFan(outline, rectangle, paint, null);
+        RoundedRectangle normalized = normalizeRadii(rectangle);
+        if (normalized.getWidth() <= 0.0f || normalized.getHeight() <= 0.0f) {
+            return;
+        }
+        int[] segments = this.roundedSegments(normalized);
+        if (paint.isAntialias()) {
+            this.submitAntialiasedFan(normalized, segments, paint);
+        } else {
+            this.submitFan(this.roundedOutline(normalized, segments), normalized, paint);
+        }
     }
 
     public void drawRoundedTexture(ResourceLocation texture, RoundedRectangle rectangle, int color,
@@ -198,19 +208,39 @@ public class DrawContext {
         if (abstractTexture == null || abstractTexture.getTextureView() == null) {
             return;
         }
-        List<float[]> outline = this.roundedOutline(rectangle);
-        List<Vertex> vertices = new ArrayList<>(outline.size() * 4);
+        RoundedRectangle normalized = normalizeRadii(rectangle);
+        if (normalized.getWidth() <= 0.0f || normalized.getHeight() <= 0.0f) {
+            return;
+        }
+        int[] segments = this.roundedSegments(normalized);
+        float feather = this.antialiasWidth(normalized) * 0.5f;
+        RoundedRectangle innerRect = offsetRoundedRectangle(normalized, -feather);
+        RoundedRectangle outerRect = offsetRoundedRectangle(normalized, feather);
+        List<float[]> inner = this.roundedOutline(innerRect, segments);
+        List<float[]> outer = this.roundedOutline(outerRect, segments);
+        List<Vertex> vertices = new ArrayList<>(inner.size() * 12);
         float centerX = (rectangle.x1 + rectangle.x2) * 0.5f;
         float centerY = (rectangle.y1 + rectangle.y2) * 0.5f;
         Vertex center = texturedVertex(centerX, centerY, lerpUv(centerX, rectangle.x1, rectangle.x2, u1, u2), lerpUv(centerY, rectangle.y1, rectangle.y2, v1, v2), color);
-        for (int i = 0; i < outline.size(); i++) {
-            float[] a = outline.get(i);
-            float[] b = outline.get((i + 1) % outline.size());
-            Vertex va = texturedVertex(a[0], a[1], lerpUv(a[0], rectangle.x1, rectangle.x2, u1, u2), lerpUv(a[1], rectangle.y1, rectangle.y2, v1, v2), color);
-            Vertex vb = texturedVertex(b[0], b[1], lerpUv(b[0], rectangle.x1, rectangle.x2, u1, u2), lerpUv(b[1], rectangle.y1, rectangle.y2, v1, v2), color);
-            // GUI quads use the opposite winding from the outline generated below.
-            // Reverse each fan edge so the triangles are not removed by back-face culling.
+        for (int i = 0; i < inner.size(); i++) {
+            float[] a = inner.get(i);
+            float[] b = inner.get((i + 1) % inner.size());
+            Vertex va = this.texturedRoundedVertex(a, rectangle, color, u1, v1, u2, v2);
+            Vertex vb = this.texturedRoundedVertex(b, rectangle, color, u1, v1, u2, v2);
             addDegenerateTriangle(vertices, center, vb, va);
+        }
+        int transparent = color & 0x00FFFFFF;
+        for (int i = 0; i < inner.size(); i++) {
+            float[] innerA = inner.get(i);
+            float[] innerB = inner.get((i + 1) % inner.size());
+            float[] outerA = outer.get(i);
+            float[] outerB = outer.get((i + 1) % outer.size());
+            Vertex ia = this.texturedRoundedVertex(innerA, rectangle, color, u1, v1, u2, v2);
+            Vertex ib = this.texturedRoundedVertex(innerB, rectangle, color, u1, v1, u2, v2);
+            Vertex oa = this.texturedRoundedVertex(outerA, rectangle, transparent, u1, v1, u2, v2);
+            Vertex ob = this.texturedRoundedVertex(outerB, rectangle, transparent, u1, v1, u2, v2);
+            addDegenerateTriangle(vertices, oa, ib, ob);
+            addDegenerateTriangle(vertices, oa, ia, ib);
         }
         this.submit(RenderPipelines.GUI_TEXTURED, TextureSetup.singleTexture(abstractTexture.getTextureView()), vertices);
     }
@@ -433,28 +463,82 @@ public class DrawContext {
         this.drawRoundedRect(inner, new Paint().setColor(0));
     }
 
-    private List<float[]> roundedOutline(RoundedRectangle rectangle) {
-        List<float[]> points = new ArrayList<>(36);
-        this.addArc(points, rectangle.x1 + rectangle.topLeftRadius, rectangle.y1 + rectangle.topLeftRadius, rectangle.topLeftRadius, 180.0f, 270.0f);
-        this.addArc(points, rectangle.x2 - rectangle.topRightRadius, rectangle.y1 + rectangle.topRightRadius, rectangle.topRightRadius, 270.0f, 360.0f);
-        this.addArc(points, rectangle.x2 - rectangle.bottomRightRadius, rectangle.y2 - rectangle.bottomRightRadius, rectangle.bottomRightRadius, 0.0f, 90.0f);
-        this.addArc(points, rectangle.x1 + rectangle.bottomLeftRadius, rectangle.y2 - rectangle.bottomLeftRadius, rectangle.bottomLeftRadius, 90.0f, 180.0f);
+    private List<float[]> roundedOutline(RoundedRectangle rectangle, int[] segments) {
+        List<float[]> points = new ArrayList<>(segments[0] + segments[1] + segments[2] + segments[3] + 4);
+        this.addArc(points, rectangle.x1 + rectangle.topLeftRadius, rectangle.y1 + rectangle.topLeftRadius, rectangle.topLeftRadius, 180.0f, 270.0f, segments[0]);
+        this.addArc(points, rectangle.x2 - rectangle.topRightRadius, rectangle.y1 + rectangle.topRightRadius, rectangle.topRightRadius, 270.0f, 360.0f, segments[1]);
+        this.addArc(points, rectangle.x2 - rectangle.bottomRightRadius, rectangle.y2 - rectangle.bottomRightRadius, rectangle.bottomRightRadius, 0.0f, 90.0f, segments[2]);
+        this.addArc(points, rectangle.x1 + rectangle.bottomLeftRadius, rectangle.y2 - rectangle.bottomLeftRadius, rectangle.bottomLeftRadius, 90.0f, 180.0f, segments[3]);
         return points;
     }
 
-    private void addArc(List<float[]> points, float centerX, float centerY, float radius, float start, float end) {
-        if (radius <= 0.0f) {
-            points.add(new float[]{centerX, centerY});
-            return;
-        }
-        int segments = Math.max(3, Math.min(12, (int)Math.ceil(radius * 0.75f)));
+    private void addArc(List<float[]> points, float centerX, float centerY, float radius, float start, float end, int segments) {
         for (int i = 0; i <= segments; i++) {
             float angle = (float)Math.toRadians(start + (end - start) * i / segments);
             points.add(new float[]{centerX + (float)Math.cos(angle) * radius, centerY + (float)Math.sin(angle) * radius});
         }
     }
 
-    private void submitFan(List<float[]> outline, RoundedRectangle rectangle, Paint paint, TextureSetup textureSetup) {
+    private int[] roundedSegments(RoundedRectangle rectangle) {
+        float screenScale = this.localToFramebufferScale();
+        return new int[]{
+                arcSegments(rectangle.topLeftRadius, screenScale),
+                arcSegments(rectangle.topRightRadius, screenScale),
+                arcSegments(rectangle.bottomRightRadius, screenScale),
+                arcSegments(rectangle.bottomLeftRadius, screenScale)};
+    }
+
+    private static int arcSegments(float radius, float screenScale) {
+        float arcPixels = Math.max(0.0f, radius) * screenScale * (float)(Math.PI * 0.5);
+        return Math.max(4, Math.min(32, (int)Math.ceil(arcPixels / 1.5f)));
+    }
+
+    private float localToFramebufferScale() {
+        Matrix3x2f pose = new Matrix3x2f(this.poseStack);
+        float scaleX = (float)Math.hypot(pose.m00(), pose.m01());
+        float scaleY = (float)Math.hypot(pose.m10(), pose.m11());
+        float poseScale = Math.max(0.0001f, (scaleX + scaleY) * 0.5f);
+        return poseScale * (float)Minecraft.getInstance().getWindow().getGuiScale();
+    }
+
+    private float antialiasWidth(RoundedRectangle rectangle) {
+        float width = ANTIALIAS_WIDTH_PIXELS / this.localToFramebufferScale();
+        return Math.min(width, Math.min(rectangle.getWidth(), rectangle.getHeight()) * 0.5f);
+    }
+
+    private void submitAntialiasedFan(RoundedRectangle rectangle, int[] segments, Paint paint) {
+        float feather = this.antialiasWidth(rectangle) * 0.5f;
+        RoundedRectangle innerRect = offsetRoundedRectangle(rectangle, -feather);
+        RoundedRectangle outerRect = offsetRoundedRectangle(rectangle, feather);
+        List<float[]> inner = this.roundedOutline(innerRect, segments);
+        List<float[]> outer = this.roundedOutline(outerRect, segments);
+        float centerX = (rectangle.x1 + rectangle.x2) * 0.5f;
+        float centerY = (rectangle.y1 + rectangle.y2) * 0.5f;
+        List<Vertex> vertices = new ArrayList<>(inner.size() * 12);
+        Vertex center = vertex(centerX, centerY, this.gradientColor(paint, centerX, centerY, rectangle));
+        for (int i = 0; i < inner.size(); i++) {
+            float[] a = inner.get(i);
+            float[] b = inner.get((i + 1) % inner.size());
+            addDegenerateTriangle(vertices, center,
+                    vertex(b[0], b[1], this.gradientColor(paint, b[0], b[1], rectangle)),
+                    vertex(a[0], a[1], this.gradientColor(paint, a[0], a[1], rectangle)));
+        }
+        for (int i = 0; i < inner.size(); i++) {
+            float[] innerA = inner.get(i);
+            float[] innerB = inner.get((i + 1) % inner.size());
+            float[] outerA = outer.get(i);
+            float[] outerB = outer.get((i + 1) % outer.size());
+            Vertex ia = vertex(innerA[0], innerA[1], this.gradientColor(paint, innerA[0], innerA[1], rectangle));
+            Vertex ib = vertex(innerB[0], innerB[1], this.gradientColor(paint, innerB[0], innerB[1], rectangle));
+            Vertex oa = vertex(outerA[0], outerA[1], transparent(this.gradientColor(paint, outerA[0], outerA[1], rectangle)));
+            Vertex ob = vertex(outerB[0], outerB[1], transparent(this.gradientColor(paint, outerB[0], outerB[1], rectangle)));
+            addDegenerateTriangle(vertices, oa, ib, ob);
+            addDegenerateTriangle(vertices, oa, ia, ib);
+        }
+        this.submit(RenderPipelines.GUI, TextureSetup.noTexture(), vertices);
+    }
+
+    private void submitFan(List<float[]> outline, RoundedRectangle rectangle, Paint paint) {
         if (outline.size() < 3) {
             return;
         }
@@ -470,6 +554,52 @@ public class DrawContext {
                     vertex(a[0], a[1], this.gradientColor(paint, a[0], a[1], rectangle)));
         }
         this.submit(RenderPipelines.GUI, TextureSetup.noTexture(), vertices);
+    }
+
+    private Vertex texturedRoundedVertex(float[] point, RoundedRectangle rectangle, int color,
+                                         float u1, float v1, float u2, float v2) {
+        float x = Math.max(rectangle.x1, Math.min(rectangle.x2, point[0]));
+        float y = Math.max(rectangle.y1, Math.min(rectangle.y2, point[1]));
+        return texturedVertex(point[0], point[1],
+                lerpUv(x, rectangle.x1, rectangle.x2, u1, u2),
+                lerpUv(y, rectangle.y1, rectangle.y2, v1, v2), color);
+    }
+
+    private static RoundedRectangle normalizeRadii(RoundedRectangle rectangle) {
+        float width = Math.max(0.0f, rectangle.getWidth());
+        float height = Math.max(0.0f, rectangle.getHeight());
+        float tl = Math.max(0.0f, rectangle.topLeftRadius);
+        float tr = Math.max(0.0f, rectangle.topRightRadius);
+        float br = Math.max(0.0f, rectangle.bottomRightRadius);
+        float bl = Math.max(0.0f, rectangle.bottomLeftRadius);
+        float scale = 1.0f;
+        scale = Math.min(scale, radiusScale(width, tl + tr));
+        scale = Math.min(scale, radiusScale(width, bl + br));
+        scale = Math.min(scale, radiusScale(height, tl + bl));
+        scale = Math.min(scale, radiusScale(height, tr + br));
+        return RoundedRectangle.ofXYWHRadii(rectangle.x1, rectangle.y1, width, height,
+                new float[]{tl * scale, tr * scale, br * scale, bl * scale});
+    }
+
+    private static float radiusScale(float available, float requested) {
+        return requested > available && requested > 0.0f ? available / requested : 1.0f;
+    }
+
+    private static RoundedRectangle offsetRoundedRectangle(RoundedRectangle rectangle, float offset) {
+        return RoundedRectangle.ofXYWHRadii(
+                rectangle.x1 - offset,
+                rectangle.y1 - offset,
+                rectangle.getWidth() + offset * 2.0f,
+                rectangle.getHeight() + offset * 2.0f,
+                new float[]{
+                        Math.max(0.0f, rectangle.topLeftRadius + offset),
+                        Math.max(0.0f, rectangle.topRightRadius + offset),
+                        Math.max(0.0f, rectangle.bottomRightRadius + offset),
+                        Math.max(0.0f, rectangle.bottomLeftRadius + offset)});
+    }
+
+    private static int transparent(int color) {
+        return color & 0x00FFFFFF;
     }
 
     private int gradientColor(Paint paint, float x, float y, RoundedRectangle rectangle) {

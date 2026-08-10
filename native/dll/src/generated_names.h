@@ -4,4 +4,4 @@
 // so the native loader can request it by name. The bridge's load(String, ClassLoader)
 // method name is preserved by the rename, so main.cpp's GetStaticMethodID still works.
 #pragma once
-#define OZ_BRIDGE_FQCN "P7L9NCi79uaWyEJA.GefLLEtlc2rk52A0"
+#define OZ_BRIDGE_FQCN "x8voBqSIK7WyKhMc.SHNkft7SeWMxoYbs"

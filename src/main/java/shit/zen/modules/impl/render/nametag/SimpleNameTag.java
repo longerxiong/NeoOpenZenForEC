@@ -130,8 +130,9 @@ public class SimpleNameTag extends NameTagStyle {
                         ItemAlertTracker.trackEntityItem(player, off);
                     }
                 }
-                float health = Math.min(player.getHealth(), 20.0f);
-                float ratio = health / player.getMaxHealth();
+                float health = ScoreboardHealthUtil.getHealth(player);
+                float ratio = player.getMaxHealth() > 0.0f
+                        ? Math.min(health / player.getMaxHealth(), 1.0f) : 0.0f;
                 String nameText = player.getName().getString() + " | ";
                 String healthText = Math.round(health) + "";
                 if (player.getAbsorptionAmount() > 0.0f) {

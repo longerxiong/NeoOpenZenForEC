@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
 import net.minecraft.world.entity.Entity;

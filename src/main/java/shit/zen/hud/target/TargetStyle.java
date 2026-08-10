@@ -26,7 +26,7 @@ extends ClientBase {
             return;
         }
         registry.put(RoundTargetStyle.class, new RoundTargetStyle());
-        registry.put(OpalTargetStyle.class, new OpalTargetStyle());
+//        registry.put(OpalTargetStyle.class, new OpalTargetStyle());
     }
 
     public static TargetStyle getByName(String string) {

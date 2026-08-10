@@ -4,8 +4,13 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundResetScorePacket;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
@@ -13,6 +18,8 @@ import net.minecraft.network.protocol.game.ClientboundSetDisplayObjectivePacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 import shit.zen.event.impl.DisconnectEvent;
 import shit.zen.event.impl.GlRenderEvent;
 import shit.zen.event.impl.PacketEvent;
@@ -20,6 +27,7 @@ import shit.zen.event.impl.Render2DEvent;
 import shit.zen.hud.target.RoundTargetStyle;
 import shit.zen.hud.target.TargetStyle;
 import shit.zen.modules.impl.combat.KillAura;
+import shit.zen.modules.settings.impl.BooleanSetting;
 import shit.zen.modules.settings.impl.ModeSetting;
 import shit.zen.utils.animation.SmoothAnimationTimer;
 import shit.zen.utils.math.Easings;
@@ -32,7 +40,7 @@ extends HudElement {
     public static final Map<String, AtomicInteger> playerHealthMap = new HashMap<>();
     private float lastHealth;
     private float healthDelta;
-    private final ModeSetting styleMode = new ModeSetting("Mode", "Opal", "Round").withDefault("Opal");
+    private final ModeSetting styleMode = new ModeSetting("Mode", "Round").withDefault("Round");
     private String belowNameObjective;
 
     public TargetHud() {
@@ -121,8 +129,8 @@ extends HudElement {
         TargetStyle targetStyle = TargetStyle.getByName(this.styleMode.getValue());
         if (targetStyle != null) {
             maxHealth = target != null ? (target.getMaxHealth() > 0.0f
-                    ? Math.min(this.getDisplayHealth(target), 20.0f) / Math.min(target.getMaxHealth(), 20.0f)
-                    : 0.0f) : 0.0f;
+                                          ? Math.min(this.getDisplayHealth(target), 20.0f) / Math.min(target.getMaxHealth(), 20.0f)
+                                          : 0.0f) : 0.0f;
             targetStyle.render(render2DEvent, target, this.healthAnim, this.healthLagAnim, maxHealth, x, y);
             if (targetStyle instanceof RoundTargetStyle) {
                 this.setWidth(120.0f);
