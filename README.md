@@ -1,6 +1,6 @@
 # NeoOpenZen
 
-**NeoOpenZen** 是 **[OpenZen](https://github.com/Margele/OpenZen)** Minecraft 客户端的 1.21.8 NeoForge 版本，由我转移大部分代码并由 [GPT-5.6-sol](https://openai.com/zh-Hans-CN/index/gpt-5-6) 修复渲染。目标版本为 **Minecraft 1.21.8 + NeoForge 21.8.52**。
+**NeoOpenZenForEC** 是 **[NeoOpenZen](https://github.com/wyx6669036/NeoOpenZen)** Minecraft 客户端的 1.21.8 NeoForge 版本，并对EC进行了绕过，由wyx转移大部分代码并由 [GPT-5.6-sol](https://openai.com/zh-Hans-CN/index/gpt-5-6) 修复渲染。目标版本为 **Minecraft 1.21.8 + NeoForge 21.8.52**。
 
 > ⚠️ 本仓库**仅供学习与研究目的发布** —— 用于研究客户端侧游戏改造、ASM 字节码补丁和混淆/反混淆技术。在你不拥有的服务器上使用作弊客户端违反绝大多数服务器规则，请自行承担后果。
 
@@ -297,8 +297,8 @@ NeoOpenZen 作为 OpenZen 的移植版本，同样支持上述交付方式。
 ~~因 EaseCation Java 没有注入检测，所以支持所有客户端注入，包括本项目~~  
 ~~目前添加了一些 Vanilla 绕过，可以在 EaseCation Java 正常使用~~  
 据 Mass 团队 2026/8/3 18:04 在 Discord 发布的公告称，EaseCation 的 mods 中**已包含**类似 Heypixel 的 Native 层反作弊 ECGuard(4689670796264710009@2@8.jar)，修改日期为 2026/07/30 15:24，但截止目前(2026/08/11)仍未启用，可正常注入  
-EaseCation Java 已于 2026/08/06 上线移动模拟反作弊，现有绕过部分失效，在开启非法移动类功能(如Speed)时请不要跳起，否则会被拉回，AntiKB 使用 JumpReset 或 NoXZ 模式，此移动模拟只拉回不封号，所有封禁仍为客服手动封禁  
-因移植问题，部分模块(已知KillAura,Scaffold)的 MoveFix 存在失效或工作不正常问题，使用时保证不要跳起或等待修复或自行修复
+EaseCation Java 已于 2026/08/06 上线移动模拟反作弊，现̶有̶绕̶过̶部̶分̶失̶效̶，̶在̶开̶启̶非̶法̶移̶动̶类̶功̶能̶(̶如̶S̶p̶e̶e̶d̶)̶时̶请̶不̶要̶跳̶起̶，̶否̶则̶会̶被̶拉̶回̶，̶A̶n̶t̶i̶K̶B̶ ̶使̶用̶ ̶J̶u̶m̶p̶R̶e̶s̶e̶t̶ ̶或̶ ̶N̶o̶X̶Z̶ ̶模̶式̶，̶此̶移̶动̶模̶拟̶只̶拉̶回̶不̶封̶号̶，̶所̶有̶封̶禁̶仍̶为̶客̶服̶手̶动̶封̶禁̶ ̶ ̶ ̶因̶移̶植̶问̶题̶，̶部̶分̶模̶块̶(̶已̶知̶K̶i̶l̶l̶A̶u̶r̶a̶,̶S̶c̶a̶f̶f̶o̶l̶d̶)̶的̶ ̶M̶o̶v̶e̶F̶i̶x̶ ̶存̶在̶失̶效̶或̶工̶作̶不̶正̶常̶问̶题̶，̶使̶用̶时̶保̶证̶不̶要̶跳̶起̶或̶等̶待̶修̶复̶或̶自̶行̶修̶复̶ ̶
+
 
 ## 致谢
 
@@ -309,4 +309,5 @@ EaseCation Java 已于 2026/08/06 上线移动模拟反作弊，现有绕过部�
 - 惨遭魔改的 [Zelix](https://www.zelix.com/)
 - [Enigma MCP](https://github.com/Margele/Enigma-MCP)
 - 开源客户端：**OpenZen**。
+- 移植到NeoForge：**NeoOpenZen**
 - 渲染类修复：**GPT 5.6 sol** 在人工监督下完成。
